@@ -1,0 +1,44 @@
+﻿@{
+    string rota = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlexGestor - @ViewBag.Title</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/menu.css">
+    <link rel="stylesheet" href="/css/global.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    @RenderSection("styles", required: false)
+</head>
+
+<body data-rota="@rota">
+
+    <div id="menu"></div>
+
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-title">@ViewBag.Title</div>
+            <a href="/Login/Sair" class="logout-top">Sair</a>
+        </div>
+
+        <main class="page-content">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="/js/menu.js"></script>
+
+    @RenderSection("scripts", required: false)
+</body>
+</html>

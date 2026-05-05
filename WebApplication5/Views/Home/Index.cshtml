@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="~/css/homeCSS/home.css">
+    <link rel="stylesheet" href="/css/menuCSS/menu.css">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <title>Início - FlexGestor</title>
+
+    <style>
+        .skeleton {
+            background: linear-gradient(90deg, #e8edf2 25%, #f4f7f9 50%, #e8edf2 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        @@keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .var-positiva {
+            color: #16a34a;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .var-negativa {
+            color: #dc2626;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .var-neutra {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .secao-titulo {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e3c72;
+            margin: 28px 0 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e8edf2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cards-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 4px;
+        }
+
+        .card-grafico, .card-lista {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 24px 28px;
+        }
+
+        .card-lista-titulo {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 16px;
+        }
+
+        .produto-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+            .produto-row:last-child {
+                border-bottom: none;
+            }
+
+        .produto-rank {
+            width: 24px;
+            height: 24px;
+            background: #1e3c72;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+            .produto-rank.ouro {
+                background: #d97706;
+            }
+
+            .produto-rank.prata {
+                background: #64748b;
+            }
+
+            .produto-rank.bronze {
+                background: #92400e;
+            }
+
+        .produto-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .produto-nome {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .produto-qtd {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .produto-receita {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e3c72;
+            white-space: nowrap;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .status-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .status-item-nome {
+            font-size: 11px;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-item-valor {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e3c72;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .alerta-estoque {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #fef2f2;
+            color: #dc2626;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .caixa-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+            .caixa-badge.aberto {
+                background: #f0fdf4;
+                color: #15803d;
+            }
+
+            .caixa-badge.fechado {
+                background: #fef2f2;
+                color: #dc2626;
+            }
+
+        #home-loader {
+            position: fixed;
+            inset: 0;
+            background: rgba(244,247,246,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            transition: opacity 0.3s;
+        }
+
+        .loader-spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid #e8edf2;
+            border-top-color: #1e3c72;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @@keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Filtro de período */
+        .filtro-periodo {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+            background: #fff;
+            border-radius: 1rem;
+            padding: 1.4rem 2rem;
+            box-shadow: 0 .1rem .4rem rgba(0,0,0,.07);
+            flex-wrap: wrap;
+        }
+
+            .filtro-periodo input[type="date"] {
+                padding: .7rem 1.2rem;
+                border: 1px solid #dce1e7;
+                border-radius: .6rem;
+                font-size: 1.4rem;
+                font-family: 'Inter', sans-serif;
+                outline: none;
+                color: #374151;
+                transition: border-color .2s;
+            }
+
+                .filtro-periodo input[type="date"]:focus {
+                    border-color: #1e3c72;
+                }
+
+        .filtro-periodo-sep {
+            color: #9ca3af;
+            font-size: 1.3rem;
+        }
+
+        .filtro-periodo-label {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .btn-filtrar-periodo {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            background: #1e3c72;
+            color: #fff;
+            border: none;
+            padding: .8rem 1.8rem;
+            border-radius: .6rem;
+            font-size: 1.4rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background .2s, transform .15s;
+        }
+
+            .btn-filtrar-periodo:hover {
+                background: #254a8f;
+                transform: translateY(-.1rem);
+            }
+
+        .btn-resetar-periodo {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            background: #fff;
+            color: #6b7280;
+            border: 1px solid #dce1e7;
+            padding: .8rem 1.4rem;
+            border-radius: .6rem;
+            font-size: 1.4rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all .2s;
+        }
+
+            .btn-resetar-periodo:hover {
+                background: #f9fafb;
+                border-color: #9ca3af;
+            }
+
+        .periodo-label-resultado {
+            margin-left: auto;
+            font-size: 1.3rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body data-rota="Home">
+    <div id="home-loader"><div class="loader-spinner"></div></div>
+
+    <div class="container">
+        <div id="menu"></div>
+        <main>
+            <h2>Bem-vindo ao FlexGestor!</h2>
+
+            <!-- FILTRO DE PERÍODO -->
+            <div class="filtro-periodo">
+                <i class="bi bi-calendar-range" style="color:#1e3c72;font-size:1.8rem"></i>
+                <span class="filtro-periodo-label">Período:</span>
+                <input type="date" id="filtro-inicio">
+                <span class="filtro-periodo-sep">até</span>
+                <input type="date" id="filtro-fim">
+                <button class="btn-filtrar-periodo" onclick="aplicarFiltro()">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <button class="btn-resetar-periodo" onclick="resetarFiltro()">
+                    <i class="bi bi-x-circle"></i> Mês atual
+                </button>
+                <span class="periodo-label-resultado" id="periodo-label"></span>
+            </div>
+
+            <!-- KPIs -->
+            <div class="cards" id="cards-kpi">
+                <!-- 1: Faturamento -->
+                <div class="card">
+                    <div class="card-topo">
+                        <span class="kpi-label">Faturamento do Período</span>
+                        <div class="kpi-icon kpi-icon-roxo"><i class="bi bi-currency-dollar"></i></div>
+                    </div>
+                    <div class="kpi-valor kpi-valor-roxo" id="kpi-faturamento">—</div>
+                    <p class="kpi-sub" id="kpi-faturamento-pedidos">— pedidos no período</p>
+                    <div class="kpi-barra-label">
+                        <span id="kpi-fat-var-label">vs. período anterior</span>
+                        <span id="kpi-fat-var-pct">—</span>
+                    </div>
+                    <div class="kpi-barra"><div class="kpi-barra-fill fill-roxo" id="bar-faturamento" style="width:0%"></div></div>
+                    <div class="card-rodape">
+                        <span id="kpi-fat-variacao" class="var-neutra">—</span>
+                        <span class="kpi-periodo" id="kpi-mes-label">—</span>
+                    </div>
+                </div>
+
+                <!-- 2: Ticket Médio -->
+                <div class="card">
+                    <div class="card-topo">
+                        <span class="kpi-label">Ticket Médio</span>
+                        <div class="kpi-icon kpi-icon-verde"><i class="bi bi-graph-up-arrow"></i></div>
+                    </div>
+                    <div class="kpi-valor kpi-valor-verde" id="kpi-ticket">—</div>
+                    <p class="kpi-sub">Média por pedido no período</p>
+                    <div class="kpi-barra-label">
+                        <span>Base: pedidos do período</span>
+                        <span id="kpi-ticket-qtd">—</span>
+                    </div>
+                    <div class="kpi-barra">
+                        <div class="kpi-barra-fill fill-verde" id="bar-ticket" style="width:0%"></div>
+                    </div>
+                    <div class="card-rodape">
+                        <span class="var-neutra"><i class="bi bi-receipt"></i> Valor médio por venda</span>
+                        <span class="kpi-periodo" id="kpi-mes-label2">—</span>
+                    </div>
+                </div>
+
+                <!-- 3: Clientes -->
+                <div class="card">
+                    <div class="card-topo">
+                        <span class="kpi-label">Clientes Ativos</span>
+                        <div class="kpi-icon kpi-icon-azul"><i class="bi bi-people-fill"></i></div>
+                    </div>
+                    <div class="kpi-valor" id="kpi-clientes-ativos">—</div>
+                    <p class="kpi-sub" id="kpi-clientes-sub">De — cadastrados</p>
+                    <div class="kpi-barra-label">
+                        <span>Taxa de atividade</span>
+                        <span id="kpi-clientes-pct">—%</span>
+                    </div>
+                    <div class="kpi-barra"><div class="kpi-barra-fill fill-azul" id="bar-clientes" style="width:0%"></div></div>
+                    <div class="card-rodape">
+                        <span class="var-neutra"><i class="bi bi-person-check"></i> Base de clientes</span>
+                        <span class="kpi-periodo" id="kpi-mes-label3">—</span>
+                    </div>
+                </div>
+
+                <!-- 4: Saldo Devedor -->
+                <div class="card">
+                    <div class="card-topo">
+                        <span class="kpi-label">Saldo Devedor Total</span>
+                        <div class="kpi-icon kpi-icon-vermelho"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                    </div>
+                    <div class="kpi-valor kpi-valor-alerta" id="kpi-devedor">—</div>
+                    <p class="kpi-sub" id="kpi-devedor-sub">Em aberto</p>
+                    <div class="kpi-barra-label">
+                        <span>% do faturamento</span>
+                        <span id="kpi-devedor-pct">—%</span>
+                    </div>
+                    <div class="kpi-barra"><div class="kpi-barra-fill fill-vermelho" id="bar-devedor" style="width:0%"></div></div>
+                    <div class="card-rodape">
+                        <span class="var-neutra"><i class="bi bi-exclamation-circle"></i> Saldo em aberto</span>
+                        <span class="kpi-periodo" id="kpi-mes-label4">—</span>
+                    </div>
+                </div>
+
+                <!-- 5: Caixa -->
+                <div class="card">
+                    <div class="card-topo">
+                        <span class="kpi-label">Caixa</span>
+                        <div class="kpi-icon kpi-icon-ciano"><i class="bi bi-cash-coin"></i></div>
+                    </div>
+                    <div class="kpi-valor kpi-valor-ciano" id="kpi-caixa-saldo">—</div>
+                    <p class="kpi-sub">
+                        <span id="kpi-caixa-badge" class="caixa-badge fechado">
+                            <i class="bi bi-lock-fill"></i> Fechado
+                        </span>
+                    </p>
+                    <div class="kpi-barra-label"><span>Entradas</span><span id="kpi-caixa-entradas">R$ 0,00</span></div>
+                    <div class="kpi-barra-label" style="margin-top:4px"><span>Saídas</span><span id="kpi-caixa-saidas">R$ 0,00</span></div>
+                    <div class="card-rodape">
+                        <a href="/Caixa" class="var-neutra" style="text-decoration:none"><i class="bi bi-arrow-right-circle"></i> Ver caixa</a>
+                        <span class="kpi-periodo" id="kpi-mes-label5">—</span>
+                    </div>
+                </div>
+
+                <!-- 6: Estoque Crítico -->
+                <div class="card">
+                    <div class="card-topo">
+                        <span class="kpi-label">Estoque Crítico</span>
+                        <div class="kpi-icon kpi-icon-laranja"><i class="bi bi-box-seam-fill"></i></div>
+                    </div>
+                    <div class="kpi-valor kpi-valor-laranja" id="kpi-estoque-critico">—</div>
+                    <p class="kpi-sub" id="kpi-estoque-sub">produtos abaixo do mínimo</p>
+                    <div id="kpi-estoque-alerta"></div>
+                    <div class="kpi-barra-label" style="margin-top:auto">
+                        <span>Total de produtos</span>
+                        <span id="kpi-estoque-total">—</span>
+                    </div>
+                    <div class="kpi-barra"><div class="kpi-barra-fill fill-laranja" id="bar-estoque" style="width:0%"></div></div>
+                    <div class="card-rodape">
+                        <a href="/Estoque" class="var-neutra" style="text-decoration:none"><i class="bi bi-arrow-right-circle"></i> Ver estoque</a>
+                        <span class="kpi-periodo" id="kpi-mes-label6">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico + Status -->
+            <p class="secao-titulo"><i class="bi bi-bar-chart-fill"></i> Desempenho de Vendas</p>
+            <div class="cards-bottom">
+                <div class="card-grafico">
+                    <div class="card-lista-titulo">Faturamento no Período</div>
+                    <canvas id="chart-faturamento" height="180"></canvas>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:20px">
+                    <div class="card-lista">
+                        <div class="card-lista-titulo"><i class="bi bi-clipboard-check"></i> Pedidos por Status</div>
+                        <div class="status-grid" id="status-grid">
+                            <div class="status-item"><div class="status-item-nome">Carregando...</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Produtos -->
+            <p class="secao-titulo"><i class="bi bi-trophy-fill"></i> Top 5 Produtos Mais Vendidos</p>
+            <div class="card-lista" style="margin-bottom:24px">
+                <div id="top-produtos-lista">
+                    <div class="produto-row"><span class="kpi-sub">Carregando...</span></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="~/js/menuJS/menu.js"></script>
+    <script>
+        const fmt    = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtNum = (v) => Number(v).toLocaleString('pt-BR');
+
+        // ── FILTRO ──────────────────────────────────────────────
+        function inicializarFiltros() {
+            const hoje = new Date();
+            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            document.getElementById('filtro-inicio').value = inicioMes.toISOString().split('T')[0];
+            document.getElementById('filtro-fim').value    = hoje.toISOString().split('T')[0];
+        }
+
+        function aplicarFiltro() {
+            const inicio = document.getElementById('filtro-inicio').value;
+            const fim    = document.getElementById('filtro-fim').value;
+            if (!inicio || !fim) return;
+            if (inicio > fim) { alert('Data início não pode ser maior que data fim.'); return; }
+
+            const fmtLabel = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
+            document.getElementById('periodo-label').textContent = `${fmtLabel(inicio)} — ${fmtLabel(fim)}`;
+
+            carregarDashboard(inicio, fim);
+        }
+
+        function resetarFiltro() {
+            inicializarFiltros();
+            aplicarFiltro();
+        }
+
+        // ── DASHBOARD ───────────────────────────────────────────
+        async function carregarDashboard(dataInicio, dataFim) {
+            try {
+                const params = new URLSearchParams({ dataInicio, dataFim });
+                const res = await fetch(`/Home/Dashboard?${params.toString()}`);
+                if (!res.ok) throw new Error('Sessão expirada');
+                const d = await res.json();
+
+                // Label do período nos cards
+                const fmtLabel = dt => new Date(dt + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+                const periodoLabel = `${fmtLabel(dataInicio)} — ${fmtLabel(dataFim)}`;
+                ['kpi-mes-label','kpi-mes-label2','kpi-mes-label3',
+                 'kpi-mes-label4','kpi-mes-label5','kpi-mes-label6'].forEach(id => {
+                    document.getElementById(id).textContent = periodoLabel;
+                });
+
+                // ── Faturamento ──
+                document.getElementById('kpi-faturamento').textContent         = fmt(d.faturamentoMes);
+                document.getElementById('kpi-faturamento-pedidos').textContent = `${fmtNum(d.totalPedidosMes)} pedidos no período`;
+
+                const varFat   = d.variacaoFaturamento;
+                const varClass = varFat >= 0 ? 'var-positiva' : 'var-negativa';
+                const varLabel = varFat >= 0
+                    ? `<i class="bi bi-arrow-up-short"></i> +${varFat.toFixed(1)}% vs período anterior`
+                    : `<i class="bi bi-arrow-down-short"></i> ${varFat.toFixed(1)}% vs período anterior`;
+                document.getElementById('kpi-fat-variacao').className = varClass;
+                document.getElementById('kpi-fat-variacao').innerHTML = varLabel;
+                document.getElementById('kpi-fat-var-pct').textContent = (varFat >= 0 ? '+' : '') + varFat.toFixed(1) + '%';
+
+                const pctFat = d.faturamentoMesAnterior > 0
+                    ? Math.min((d.faturamentoMes / d.faturamentoMesAnterior) * 100, 150)
+                    : (d.faturamentoMes > 0 ? 100 : 0);
+                document.getElementById('bar-faturamento').style.width = Math.min(pctFat, 100) + '%';
+
+                // ── Ticket ──
+                document.getElementById('kpi-ticket').textContent     = fmt(d.ticketMedio);
+                document.getElementById('kpi-ticket-qtd').textContent = fmtNum(d.totalPedidosMes) + ' pedidos';
+
+                const pctTicket = d.ticketMedio > 0 ? Math.min((d.ticketMedio / 1000) * 100, 100) : 0;
+                document.getElementById('bar-ticket').style.width = pctTicket + '%';
+
+                // ── Clientes ──
+                document.getElementById('kpi-clientes-ativos').textContent = fmtNum(d.clientesAtivos);
+                document.getElementById('kpi-clientes-sub').textContent    = `De ${fmtNum(d.totalClientes)} cadastrados`;
+                document.getElementById('kpi-clientes-pct').textContent    = d.percClientesAtivos + '%';
+                document.getElementById('bar-clientes').style.width        = d.percClientesAtivos + '%';
+
+                // ── Devedor ──
+                document.getElementById('kpi-devedor').textContent = fmt(d.saldoDevedorTotal);
+                const pctDev = d.faturamentoMes > 0
+                    ? Math.min((d.saldoDevedorTotal / d.faturamentoMes) * 100, 100) : 0;
+                document.getElementById('kpi-devedor-pct').textContent = pctDev.toFixed(1) + '%';
+                document.getElementById('bar-devedor').style.width     = pctDev + '%';
+
+                // ── Caixa ──
+                document.getElementById('kpi-caixa-saldo').textContent    = fmt(d.saldoCaixaAtual);
+                document.getElementById('kpi-caixa-entradas').textContent = fmt(d.totalEntradas);
+                document.getElementById('kpi-caixa-saidas').textContent   = fmt(d.totalSaidas);
+                const badge = document.getElementById('kpi-caixa-badge');
+                badge.className = d.caixaAberto ? 'caixa-badge aberto' : 'caixa-badge fechado';
+                badge.innerHTML = d.caixaAberto
+                    ? '<i class="bi bi-unlock-fill"></i> Aberto'
+                    : '<i class="bi bi-lock-fill"></i> Fechado';
+
+                // ── Estoque ──
+                document.getElementById('kpi-estoque-critico').textContent = fmtNum(d.produtosEstoqueCritico);
+                document.getElementById('kpi-estoque-total').textContent   = fmtNum(d.totalProdutos);
+                document.getElementById('bar-estoque').style.width = Math.min(d.percEstoqueCritico, 100) + '%';
+                const alertaEl = document.getElementById('kpi-estoque-alerta');
+                alertaEl.innerHTML = d.produtosEstoqueCritico > 0
+                    ? `<span class="alerta-estoque"><i class="bi bi-exclamation-triangle-fill"></i> Ação necessária</span>`
+                    : '';
+
+                // ── Status pedidos ──
+                const statusGrid = document.getElementById('status-grid');
+                if (d.pedidosPorStatus && d.pedidosPorStatus.length > 0) {
+                    const cores = { 'Pendente':'#f59e0b','Em Andamento':'#3b82f6','Concluído':'#16a34a','Cancelado':'#dc2626' };
+                    statusGrid.innerHTML = d.pedidosPorStatus.map(s => `
+                        <div class="status-item">
+                            <div class="status-item-nome">${s.statusNome}</div>
+                            <div class="status-item-valor" style="color:${cores[s.statusNome]||'#1e3c72'}">${fmtNum(s.quantidade)}</div>
+                        </div>`).join('');
+                } else {
+                    statusGrid.innerHTML = '<div class="kpi-sub" style="grid-column:1/-1">Nenhum pedido no período.</div>';
+                }
+
+                // ── Top produtos ──
+                const lista = document.getElementById('top-produtos-lista');
+                if (d.topProdutos && d.topProdutos.length > 0) {
+                    const medalhas = ['ouro','prata','bronze'];
+                    lista.innerHTML = d.topProdutos.map((p, i) => `
+                        <div class="produto-row">
+                            <div class="produto-rank ${medalhas[i]||''}">${i+1}</div>
+                            <div class="produto-info">
+                                <div class="produto-nome">${p.nomeProduto}</div>
+                                <div class="produto-qtd">${fmtNum(p.totalVendido)} unidades vendidas</div>
+                            </div>
+                            <div class="produto-receita">${fmt(p.receitaTotal)}</div>
+                        </div>`).join('');
+                } else {
+                    lista.innerHTML = '<div class="kpi-sub" style="padding:12px 0">Nenhuma venda no período.</div>';
+                }
+
+                // ── Gráfico ──
+                const ctxEl = document.getElementById('chart-faturamento');
+                if (ctxEl._chartInstance) ctxEl._chartInstance.destroy();
+                if (d.faturamentoMensal && d.faturamentoMensal.length > 0) {
+                    ctxEl._chartInstance = new Chart(ctxEl.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: d.faturamentoMensal.map(m => m.mes),
+                            datasets: [{
+                                label: 'Faturamento (R$)',
+                                data: d.faturamentoMensal.map(m => m.faturamento),
+                                backgroundColor: 'rgba(30,60,114,0.15)',
+                                borderColor: '#1e3c72',
+                                borderWidth: 2,
+                                borderRadius: 6,
+                                borderSkipped: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { font: { family:'Inter', size:11 }, color:'#6b7280' } },
+                                y: { grid: { color:'#f0f2f5' }, ticks: { font: { family:'Inter', size:11 }, color:'#6b7280', callback: v => 'R$ '+(v/1000).toFixed(0)+'k' } }
+                            }
+                        }
+                    });
+                }
+
+                // ── Cache para sino do menu ──
+                window.__dashboardCache = d;
+                if (typeof processarDashboardCache === "function") processarDashboardCache(d);
+
+            } catch (err) {
+                console.error('Erro ao carregar dashboard:', err);
+            } finally {
+                const loader = document.getElementById('home-loader');
+                if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.remove(), 300); }
+            }
+        }
+
+        // ── INIT ────────────────────────────────────────────────
+        inicializarFiltros();
+        aplicarFiltro();
+    </script>
+</body>
+</html>
