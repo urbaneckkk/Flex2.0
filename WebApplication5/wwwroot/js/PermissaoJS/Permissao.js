@@ -1,10 +1,9 @@
-﻿// ===== PERMISSAO.JS — layout melhorado =====
-
-let listaCargos = [];
+﻿let listalistaCargos = [];
 let listaMenus = [];
 let listaCampos = [];
 let cargoAtual = null;
 
+// Mapeamento de rotas para ícones (usando Bootstrap Icons)
 const MENU_ICONES = {
     'Home': 'bi-house-fill', 'Usuario': 'bi-person-fill',
     'Cliente': 'bi-people-fill', 'Pedido': 'bi-bag-fill',
@@ -16,16 +15,16 @@ const MENU_ICONES = {
     'EstoqueHistorico': 'bi-clock-history',
 };
 
-const CARGO_CORES = [
-    'cargo-cor-1', 'cargo-cor-2', 'cargo-cor-3', 'cargo-cor-4', 'cargo-cor-5'
-]; 
-
+// ──────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────
 async function apiGet(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
     return res.json();
 }
 
+// Função genérica para requisições POST
 async function apiPost(url, body) {
     const res = await fetch(url, {
         method: 'POST',
@@ -36,6 +35,7 @@ async function apiPost(url, body) {
     return res;
 }
 
+// Função para exibir notificações visuais (toast)
 function flexToast(msg, tipo = 'sucesso') {
     const cores = { sucesso: '#15803d', erro: '#dc2626', aviso: '#d97706' };
     const t = document.createElement('div');
@@ -52,7 +52,9 @@ function flexToast(msg, tipo = 'sucesso') {
     }, 3200);
 }
 
-// ── INICIALIZAR ──────────────────────────
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
 async function inicializar() {
     try {
         listaCargos = await apiGet('/Usuario/ListarCargos');
@@ -62,31 +64,27 @@ async function inicializar() {
     }
 }
 
-function renderizarCargos() {
-    const container = document.getElementById('lista-cargos');
-    container.innerHTML = listaCargos.map((c, idx) => {
-        const cor = CARGO_CORES[idx % CARGO_CORES.length];
-        const inicial = (c.nome ?? c.Nome ?? '?')[0].toUpperCase();
-        return `
-        <div class="perm-cargo-item" id="cargo-item-${c.idCargo}"
-             onclick="selecionarCargo(${c.idCargo})">
-            <div class="perm-cargo-avatar ${cor}">${inicial}</div>
-            <div class="perm-cargo-info">
-                <div class="perm-cargo-nome">${c.nome ?? c.Nome}</div>
-                <div class="perm-cargo-desc">Clique para configurar</div>
-            </div>
-            <i class="bi bi-chevron-right perm-cargo-seta"></i>
-        </div>`;
-    }).join('');
-}
+// ──────────────────────────────────────────
+// CARREGAR PERMISSÕES DO CARGO
+// ──────────────────────────────────────────
+async function carregarPermissoes() {
+    const sel = document.getElementById('select-cargo');
+    const idCargo = Number(sel.value);
+
+    if (!idCargo) {
+        document.getElementById('permissao-conteudo').style.display = 'none';
+        document.getElementById('permissao-vazio').style.display = 'flex';
+        document.getElementById('cargo-badge').style.display = 'none';
+        return;
+    }
 
 async function selecionarCargo(idCargo) {
     cargoAtual = idCargo;
 
-    // Destaca cargo selecionado
-    document.querySelectorAll('.perm-cargo-item').forEach(el =>
-        el.classList.remove('ativo'));
-    document.getElementById(`cargo-item-${idCargo}`)?.classList.add('ativo');
+    // Badge
+    const badge = document.getElementById('cargo-badge');
+    badge.innerHTML = `<i class="bi bi-person-badge-fill"></i> ${nomeCargo}`;
+    badge.style.display = 'inline-flex';
 
     // Mostra editor
     document.getElementById('perm-vazio').style.display = 'none';
@@ -95,28 +93,73 @@ async function selecionarCargo(idCargo) {
     document.getElementById('perm-editor').style.gap = '2rem';
 
     try {
+        // Busca menus e campos em paralelo
         [listaMenus, listaCampos] = await Promise.all([
             apiGet(`/Permissao/ListarMenus?idCargo=${idCargo}`),
             apiGet(`/Permissao/ListarCampos?idCargo=${idCargo}`)
         ]);
         renderizarMenus();
         renderizarCampos();
-        mudarAba('menus');
-        setStatus('');
+
+        document.getElementById('permissao-vazio').style.display = 'none';
+        document.getElementById('permissao-conteudo').style.display = 'block';
+        document.getElementById('status-salvamento').textContent = '';
+        document.getElementById('status-salvamento').className = 'status-salvamento';
+
     } catch (err) {
         flexToast('Erro ao carregar permissões', 'erro');
     }
 }
 
+// ──────────────────────────────────────────
+// RENDERIZAR MENUS
+// ──────────────────────────────────────────
 function renderizarMenus() {
     const container = document.getElementById('lista-menus');
-    container.innerHTML = listaMenus.map(m => {
-        const icone = MENU_ICONES[m.rota] ?? 'bi-circle';
-        const cls = m.temAcesso ? 'permitido' : 'bloqueado';
-        return `
-        <div class="perm-menu-card ${cls}" id="menu-card-${m.idMenu}"
-             onclick="toggleMenu(${m.idMenu})">
-            <div class="perm-menu-icon">
+
+    // Agrupa por menuPai
+    const raiz = listaMenus.filter(m => !m.menuPai);
+    const filhos = listaMenus.filter(m => m.menuPai);
+
+    // Monta itens raiz + filhos agrupados
+    const grupos = {};
+    filhos.forEach(f => {
+        if (!grupos[f.menuPai]) grupos[f.menuPai] = [];
+        grupos[f.menuPai].push(f);
+    });
+
+    let html = '';
+
+    raiz.forEach(m => {
+        html += renderizarItemMenu(m);
+
+        // Se tem filhos, renderiza com indentação
+        if (grupos[m.nome]) {
+            grupos[m.nome].forEach(filho => {
+                html += renderizarItemMenu(filho, true);
+            });
+        }
+    });
+
+    // Filhos órfãos (menuPai não está na raiz como nome)
+    filhos.forEach(f => {
+        const paiExiste = raiz.some(r => r.nome === f.menuPai);
+        if (!paiExiste) html += renderizarItemMenu(f, true);
+    });
+
+    container.innerHTML = html;
+}
+
+function renderizarItemMenu(m, filho = false) {
+    const icone = MENU_ICONES[m.rota] ?? 'bi-circle';
+    const ativo = m.temAcesso;
+
+    return `
+    <div class="permissao-item ${ativo ? 'ativo' : 'inativo'} ${filho ? 'filho' : ''}"
+         id="menu-item-${m.idMenu}"
+         style="${filho ? 'margin-left:3.2rem;' : ''}">
+        <div class="permissao-item-info">
+            <div class="permissao-item-icone">
                 <i class="bi ${icone}"></i>
             </div>
             <div class="perm-menu-info">
@@ -133,20 +176,35 @@ function renderizarMenus() {
     }).join('');
 }
 
-function toggleMenu(idMenu) {
+function toggleMenu(el, idMenu) {
+    const item = document.getElementById(`menu-item-${idMenu}`);
+    const labelEl = item.querySelector('.toggle-label');
+    const ativo = el.checked;
+
+    // Atualiza no array
     const m = listaMenus.find(x => x.idMenu === idMenu);
-    if (!m) return;
-    m.temAcesso = !m.temAcesso;
-    renderizarMenus();
+    if (m) m.temAcesso = ativo;
+
+    // Atualiza visual
+    item.classList.toggle('ativo', ativo);
+    item.classList.toggle('inativo', !ativo);
+    labelEl.textContent = ativo ? 'Permitido' : 'Bloqueado';
+    labelEl.className = `toggle-label ${ativo ? 'ativo' : ''}`;
 }
 
+// Marca/desmarca todos menus
 function marcarTodosMenus(valor) {
     listaMenus.forEach(m => m.temAcesso = valor);
     renderizarMenus();
 }
 
+// ──────────────────────────────────────────
+// RENDERIZAR CAMPOS
+// ──────────────────────────────────────────
 function renderizarCampos() {
-    const tbody = document.getElementById('lista-campos');
+    const container = document.getElementById('lista-campos');
+
+    // Agrupa por seção
     const secoes = {};
     listaCampos.forEach(c => {
         if (!secoes[c.secao]) secoes[c.secao] = [];
@@ -159,50 +217,70 @@ function renderizarCampos() {
         itens.forEach(c => {
             const editBloqueado = !c.visivel;
             html += `
-            <tr id="campo-row-${c.idCampo}" style="${!c.visivel ? 'opacity:.5' : ''}">
-                <td style="font-weight:600">
-                    ${!c.visivel
-                    ? `<i class="bi bi-eye-slash-fill" style="color:#dc2626;margin-right:.6rem;font-size:1.2rem"></i>`
-                    : `<i class="bi bi-eye-fill" style="color:#15803d;margin-right:.6rem;font-size:1.2rem"></i>`
-                }
-                    ${c.nome}
-                </td>
-                <td style="font-family:monospace;color:#9ca3af;font-size:1.2rem">${c.chave}</td>
-                <td style="text-align:center">
-                    <label class="perm-switch" style="margin:0 auto">
-                        <input type="checkbox" data-campo-id="${c.idCampo}" data-tipo="visivel"
-                            ${c.visivel ? 'checked' : ''}
-                            onchange="toggleCampo(${c.idCampo},'visivel',this.checked)">
-                        <span class="perm-switch-slider"></span>
-                    </label>
-                </td>
-                <td style="text-align:center">
-                    ${editBloqueado
-                    ? `<span title="Ative a visibilidade primeiro">
-                               <i class="bi bi-lock-fill" style="color:#d97706;font-size:1.6rem"></i>
-                           </span>`
-                    : `<label class="perm-switch" style="margin:0 auto">
-                               <input type="checkbox" data-campo-id="${c.idCampo}" data-tipo="editavel"
-                                   ${c.editavel ? 'checked' : ''}
-                                   onchange="toggleCampo(${c.idCampo},'editavel',this.checked)">
-                               <span class="perm-switch-slider"></span>
-                           </label>`
-                }
-                </td>
-            </tr>`;
+            <div class="campo-item ${!c.visivel ? 'oculto' : ''}" id="campo-item-${c.idCampo}">
+                <div>
+                    <div class="campo-item-nome">${c.nome}</div>
+                    <div class="campo-item-chave">${c.chave}</div>
+                </div>
+
+                <!-- VISÍVEL -->
+                <div class="campo-controles">
+                    <div class="campo-controle">
+                        <span class="campo-controle-label">Visível</span>
+                        <label class="toggle">
+                            <input type="checkbox"
+                                data-campo-id="${c.idCampo}"
+                                data-tipo="visivel"
+                                ${c.visivel ? 'checked' : ''}
+                                onchange="toggleCampo(this, ${c.idCampo}, 'visivel')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- EDITÁVEL -->
+                    <div class="campo-controle">
+                        <span class="campo-controle-label">Editável</span>
+                        <label class="toggle">
+                            <input type="checkbox"
+                                data-campo-id="${c.idCampo}"
+                                data-tipo="editavel"
+                                ${c.editavel ? 'checked' : ''}
+                                ${!c.visivel ? 'disabled' : ''}
+                                onchange="toggleCampo(this, ${c.idCampo}, 'editavel')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>`;
         });
     });
     tbody.innerHTML = html;
 }
 
-function toggleCampo(idCampo, tipo, valor) {
+function toggleCampo(el, idCampo, tipo) {
     const c = listaCampos.find(x => x.idCampo === idCampo);
     if (!c) return;
-    c[tipo] = valor;
-    if (tipo === 'visivel' && !valor) c.editavel = false;
-    renderizarCampos();
+
+    c[tipo] = el.checked;
+
+    const item = document.getElementById(`campo-item-${idCampo}`);
+
+    // Se ocultar o campo, desabilita o toggle de editável também
+    if (tipo === 'visivel') {
+        const editavelToggle = item.querySelector('[data-tipo="editavel"]');
+        if (!el.checked) {
+            c.editavel = false;
+            editavelToggle.checked = false;
+            editavelToggle.disabled = true;
+            item.classList.add('oculto');
+        } else {
+            editavelToggle.disabled = false;
+            item.classList.remove('oculto');
+        }
+    }
 }
 
+// Marca/desmarca todos campos
 function marcarTodosCampos(tipo, valor) {
     listaCampos.forEach(c => {
         c[tipo] = valor;
@@ -211,6 +289,9 @@ function marcarTodosCampos(tipo, valor) {
     renderizarCampos();
 }
 
+// ──────────────────────────────────────────
+// ABAS
+// ──────────────────────────────────────────
 function mudarAba(aba) {
     document.getElementById('aba-menus').style.display = aba === 'menus' ? '' : 'none';
     document.getElementById('aba-campos').style.display = aba === 'campos' ? '' : 'none';
@@ -218,6 +299,9 @@ function mudarAba(aba) {
     document.getElementById('tab-campos-btn').classList.toggle('ativa', aba === 'campos');
 }
 
+// ──────────────────────────────────────────
+// SALVAR
+// ──────────────────────────────────────────
 async function salvarPermissoes() {
     if (!cargoAtual) return;
     const btn = document.querySelector('.btn-salvar-perm');
@@ -247,18 +331,7 @@ async function salvarPermissoes() {
     }
 }
 
-function setStatus(tipo) {
-    const el = document.getElementById('status-salvamento');
-    if (tipo === 'sucesso') {
-        el.className = 'perm-footer-info sucesso';
-        el.innerHTML = '<i class="bi bi-check-circle-fill"></i> Salvo com sucesso!';
-    } else if (tipo === 'erro') {
-        el.className = 'perm-footer-info erro';
-        el.innerHTML = '<i class="bi bi-x-circle-fill"></i> Erro ao salvar.';
-    } else {
-        el.className = 'perm-footer-info';
-        el.innerHTML = '<i class="bi bi-info-circle"></i> As alterações só são aplicadas após salvar.';
-    }
-}
-
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', inicializar);
