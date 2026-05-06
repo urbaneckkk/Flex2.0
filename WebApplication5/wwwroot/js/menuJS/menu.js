@@ -1,25 +1,19 @@
 ﻿// ===== MENU.JS — FlexGestor =====
 
-// Array que define toda a estrutura do menu lateral do sistema
 const menuItens = [
-    { label: "Início", icone: "bi-house-fill", rota: "Home" }, // Item simples
-
-    // Item com submenu (filhos)
+    { label: "Início", icone: "bi-house-fill", rota: "Home" },
     {
         label: "Caixa", icone: "bi-cash-coin", rota: "Caixa",
         filhos: [{ label: "Controle de Caixa", rota: "Caixa" }]
     },
-
     {
         label: "Vendas", icone: "bi-bag-fill", rota: "Pedido",
         filhos: [{ label: "Pedidos", rota: "Pedido" }]
     },
-
     {
         label: "Financeiro", icone: "bi-bank", rota: "Financeiro",
         filhos: [{ label: "Contas a Receber / Pagar", rota: "Financeiro" }]
     },
-
     {
         label: "Estoque", icone: "bi-boxes", rota: "Estoque",
         filhos: [
@@ -27,8 +21,6 @@ const menuItens = [
             { label: "Movimentações", rota: "EstoqueHistorico" }
         ]
     },
-
-    // Itens marcados como "futuro" não ficam clicáveis
     {
         label: "Compras", icone: "bi-truck", futuro: true,
         filhos: [
@@ -36,7 +28,6 @@ const menuItens = [
             { label: "Entrada de Mercadoria", futuro: true }
         ]
     },
-
     {
         label: "Pessoas", icone: "bi-people-fill", rota: "Cliente",
         filhos: [
@@ -44,7 +35,6 @@ const menuItens = [
             { label: "Fornecedores", rota: "Fornecedor" }
         ]
     },
-
     {
         label: "Cadastros", icone: "bi-box-seam", rota: "Produto",
         filhos: [
@@ -53,9 +43,7 @@ const menuItens = [
             { label: "Despesas", rota: "Despesa" }
         ]
     },
-
     { label: "Auditoria", icone: "bi-shield-check", rota: "Auditoria" },
-
     {
         label: "Configurações", icone: "bi-gear-fill", rota: "Empresa",
         filhos: [
@@ -66,52 +54,39 @@ const menuItens = [
     }
 ];
 
-// Flags de controle das notificações
-let notifCarregadas = false;   // já carregou?
-let notifCarregando = false;  // está carregando?
-let alertasCache = [];        // cache dos alertas
+// ── Notificações ──────────────────────────
+let notifCarregadas = false;
+let notifCarregando = false;
+let alertasCache = [];
 
-// Formata valores monetários no padrão BR
 function fmtNotif(v) {
     return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 }
 
-// GET com timeout (evita travar UI)
 function safeGet(url, timeoutMs) {
     timeoutMs = timeoutMs || 4000;
-
-    var ctrl = new AbortController(); // permite cancelar a requisição
+    var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, timeoutMs);
-
     return fetch(url, { signal: ctrl.signal })
-        .then(function (r) { return r.ok ? r.json() : []; }) // fallback seguro
-        .then(function (d) {
-            clearTimeout(timer);
-            return Array.isArray(d) ? d : [];
-        })
-        .catch(function () { return []; }); // nunca quebra o sistema
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (d) { clearTimeout(timer); return Array.isArray(d) ? d : []; })
+        .catch(function () { return []; });
 }
 
-// Função principal que monta o menu
+// ── Construção do menu ────────────────────
 async function inicializarMenu() {
-
-    // Descobre rota atual pela tag <body data-rota="...">
     var rotaAtual = document.body.dataset.rota || "";
 
     var permissoes = null;
-
-    // Busca permissões do usuário
     try {
         var res = await fetch("/Permissao/MinhasPermissoes");
         if (res.ok) permissoes = await res.json();
-    } catch (e) { }
+    } catch (e) { /* sem permissões — exibe tudo */ }
 
-    // Verifica se usuário tem acesso a uma rota
     var temAcesso = function (rota) {
         if (!rota) return false;
-        if (!permissoes) return true; // fallback
+        if (!permissoes) return true;
         if (permissoes.admin) return true;
-
         return permissoes.rotas && permissoes.rotas.some(function (r) {
             return r.toLowerCase() === rota.toLowerCase();
         });
@@ -122,47 +97,53 @@ async function inicializarMenu() {
     var container = document.getElementById("menu");
     if (!container) return;
 
-    // ───────────────── HEADER ─────────────────
+    // ── HEADER ──────────────────────────────
     var cabecalho = document.createElement("header");
     cabecalho.className = "cabecalho";
 
-    // HTML do topo (logo + notificações + logout)
+    // FIX: estrutura com classes corretas para CSS funcionar
     cabecalho.innerHTML =
-        '<h1><i class="bi bi-lightning-charge-fill"></i>FlexGestor</h1>' +
-        '<div>' +
+        // Lado esquerdo: logo
+        '<h1><i class="bi bi-lightning-charge-fill"></i> FlexGestor</h1>' +
 
-        // Botão de notificações
-        '<button id="notif-btn" onclick="toggleNotif(event)">' +
+        // Lado direito: notificações + sair
+        '<div class="cabecalho-direita">' +
+
+        // Wrapper posicionado para o painel flutuante
+        '<div class="notif-central">' +
+        '<button class="notif-btn" onclick="toggleNotif(event)">' +
         '<i class="bi bi-bell-fill"></i>' +
-
-        // Badge contador
-        '<span id="notif-count">0</span>' +
+        // FIX: classe em vez de id para o badge
+        '<span class="notif-count" id="notif-count" style="display:none">0</span>' +
         '</button>' +
 
-        // Painel de notificações
-        '<div id="notif-panel">' +
-        '<div>Alertas do Sistema</div>' +
-        '<div id="notif-lista"></div>' +
+        // FIX: classe correta + estrutura interna com classes
+        '<div class="notif-panel" id="notif-panel">' +
+        '<div class="notif-panel-header">Alertas do Sistema</div>' +
+        '<div class="notif-panel-lista" id="notif-lista">' +
+        '<div class="notif-carregando">Carregando...</div>' +
+        '</div>' +
+        '</div>' +
         '</div>' +
 
-        // Logout
-        '<a href="/Login/Sair">Sair</a>' +
+        '<a href="/Login/Sair" class="sair">Sair</a>' +
         '</div>';
 
     container.appendChild(cabecalho);
 
-    // ───────────────── SIDEBAR ─────────────────
+    // ── SIDEBAR ──────────────────────────────
     var sidebar = document.createElement("nav");
+    sidebar.className = "sidebar";   // FIX: classe que estava faltando (anterior PR)
+
     var ul = document.createElement("ul");
 
     menuItens.forEach(function (item) {
 
-        // Regra especial para configurações
+        // Regra de visibilidade para Configurações
         if (item.label === "Configurações") {
             if (!isAdmin && !temAcesso("Empresa")) return;
         }
 
-        // Verifica se item deve aparecer
         var paiAcessivel = item.futuro ? false
             : item.filhos
                 ? item.filhos.some(function (f) { return !f.futuro && temAcesso(f.rota); })
@@ -172,44 +153,72 @@ async function inicializarMenu() {
 
         var li = document.createElement("li");
 
-        // Verifica se está ativo
         var ativo = item.rota === rotaAtual ||
             (item.filhos && item.filhos.some(function (f) { return f.rota === rotaAtual; }));
 
-        // Item sem submenu
         if (!item.filhos) {
-
-            li.innerHTML = item.futuro
-                ? '<span>' + item.label + '</span>'
-                : '<a href="/' + item.rota + '" class="' + (ativo ? "active" : "") + '">' + item.label + '</a>';
+            // ── Item simples ──────────────────
+            if (item.futuro) {
+                li.innerHTML = '<span class="menu-item-futuro">' +
+                    '<span class="menu-item-label">' +
+                    '<i class="bi ' + (item.icone || 'bi-circle') + '"></i>' +
+                    item.label +
+                    '</span>' +
+                    '</span>';
+            } else {
+                // FIX: ícone incluído dentro do <a>
+                li.innerHTML = '<a href="/' + item.rota + '" class="' + (ativo ? "active" : "") + '">' +
+                    '<i class="bi ' + (item.icone || 'bi-circle') + '"></i>' +
+                    item.label +
+                    '</a>';
+            }
 
         } else {
-
-            // Item com submenu
+            // ── Item com submenu ──────────────
             li.className = "menu-expansivel" + (ativo ? " active" : "");
+            if (item.futuro) li.classList.add("menu-futuro");
 
+            // FIX: ícone incluído no span pai + seta
             li.innerHTML =
-                '<span>' + item.label + '</span>' +
+                '<span>' +
+                '<span class="menu-item-label">' +
+                '<i class="bi ' + (item.icone || 'bi-circle') + '"></i>' +
+                item.label +
+                '</span>' +
+                '<i class="bi bi-chevron-down seta"></i>' +
+                '</span>' +
                 '<ul class="submenu"></ul>';
 
             var submenu = li.querySelector(".submenu");
 
             item.filhos.forEach(function (filho) {
-
                 if ((filho.rota === "Usuario" || filho.rota === "Permissao") && !isAdmin) return;
                 if (!filho.futuro && !temAcesso(filho.rota)) return;
 
                 var liFilho = document.createElement("li");
 
-                liFilho.innerHTML = filho.futuro
-                    ? '<span>' + filho.label + '</span>'
-                    : '<a href="/' + filho.rota + '">' + filho.label + '</a>';
-
+                if (filho.futuro) {
+                    liFilho.innerHTML = '<span class="menu-item-futuro">' + filho.label + '</span>';
+                } else {
+                    var ativoFilho = filho.rota === rotaAtual;
+                    liFilho.innerHTML = '<a href="/' + filho.rota + '"' +
+                        (ativoFilho ? ' class="active"' : '') + '>' +
+                        filho.label + '</a>';
+                }
                 submenu.appendChild(liFilho);
             });
 
+            // Se não tem filhos visíveis, não exibe o item pai
+            if (!submenu.children.length) return;
+
+            // Expansão ao clicar (só para itens não-futuro)
             if (!item.futuro) {
-                li.querySelector("span").addEventListener("click", function () {
+                var toggleSpan = li.querySelector("span");
+                // Abre automaticamente se rota atual é filha
+                if (ativo) {
+                    submenu.style.maxHeight = "40rem";
+                }
+                toggleSpan.addEventListener("click", function () {
                     var aberto = li.classList.contains("active");
                     li.classList.toggle("active", !aberto);
                     submenu.style.maxHeight = aberto ? "" : "40rem";
@@ -223,43 +232,46 @@ async function inicializarMenu() {
     sidebar.appendChild(ul);
     container.appendChild(sidebar);
 
-    // Fecha notificações ao clicar fora
+    // Fecha painel de notificações ao clicar fora
     document.addEventListener("click", function (e) {
         var panel = document.getElementById("notif-panel");
-        var btn = document.getElementById("notif-btn");
-
-        if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
-            panel.style.display = "none";
+        var btn = document.querySelector(".notif-btn");
+        if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
+            panel.classList.remove("aberto");
         }
     });
 
+    // Aplica cache do dashboard se disponível
     if (window.__dashboardCache) {
         processarDashboardCache(window.__dashboardCache);
     }
 }
 
-// Abre/fecha painel de notificações
+// ── Toggle do painel de notificações ─────
 function toggleNotif(e) {
     e.stopPropagation();
-
     var panel = document.getElementById("notif-panel");
-    var aberto = panel.style.display === "block";
+    var aberto = panel.classList.contains("aberto");
 
-    panel.style.display = aberto ? "none" : "block";
+    if (aberto) {
+        panel.classList.remove("aberto");
+        return;
+    }
 
-    // Lazy loading
-    if (!aberto && !notifCarregadas && !notifCarregando) {
+    panel.classList.add("aberto");
+
+    // Lazy loading: carrega apenas na primeira abertura
+    if (!notifCarregadas && !notifCarregando) {
         carregarNotificacoes();
-    } else if (!aberto && notifCarregadas) {
+    } else if (notifCarregadas) {
         renderizarLista(alertasCache);
     }
 }
 
-// Carrega dados e gera alertas
+// ── Carregar alertas ──────────────────────
 async function carregarNotificacoes() {
     notifCarregando = true;
-
-    renderizarLista(null); // loading
+    renderizarLista(null); // exibe "Carregando..."
 
     var resultados = await Promise.all([
         safeGet("/Estoque/Listar"),
@@ -269,35 +281,50 @@ async function carregarNotificacoes() {
 
     notifCarregando = false;
     notifCarregadas = true;
-
     alertasCache = montarAlertas(resultados[0], resultados[1], resultados[2]);
 
     atualizarContador(alertasCache);
     renderizarLista(alertasCache);
 }
 
-// Constrói lista de alertas baseado nos dados
+// ── Montar lista de alertas ───────────────
 function montarAlertas(estoque, receber, pagar) {
     var alertas = [];
 
     // Estoque crítico
     var criticos = estoque.filter(function (e) {
-        return e.quantidade <= e.estoqueMinimo;
+        return (e.quantidade ?? 0) <= (e.estoqueMinimo ?? 0);
     });
-
     if (criticos.length > 0) {
         alertas.push({
-            titulo: criticos.length + " produtos com estoque crítico",
+            prioridade: "alta",
+            titulo: criticos.length + " produto" + (criticos.length > 1 ? "s" : "") + " com estoque crítico",
+            descricao: criticos.slice(0, 3).map(function (e) { return e.nomeProduto; }).join(", ") +
+                (criticos.length > 3 ? " e mais " + (criticos.length - 3) + "..." : ""),
             rota: "/Estoque"
         });
     }
 
-    // Contas vencidas
-    var vencidasR = receber.filter(c => c.statusAtual === "VENCIDO");
-
+    // Contas a receber vencidas
+    var vencidasR = receber.filter(function (c) { return c.statusAtual === "VENCIDO"; });
     if (vencidasR.length > 0) {
+        var totalR = vencidasR.reduce(function (s, c) { return s + Math.max(0, c.valorTotal - c.valorPago); }, 0);
         alertas.push({
-            titulo: vencidasR.length + " contas a receber vencidas",
+            prioridade: "media",
+            titulo: vencidasR.length + " conta" + (vencidasR.length > 1 ? "s" : "") + " a receber vencida" + (vencidasR.length > 1 ? "s" : ""),
+            descricao: "Total em aberto: " + fmtNotif(totalR),
+            rota: "/Financeiro"
+        });
+    }
+
+    // Contas a pagar vencidas
+    var vencidasP = pagar.filter(function (c) { return c.statusAtual === "VENCIDO"; });
+    if (vencidasP.length > 0) {
+        var totalP = vencidasP.reduce(function (s, c) { return s + Math.max(0, c.valorTotal - c.valorPago); }, 0);
+        alertas.push({
+            prioridade: "alta",
+            titulo: vencidasP.length + " conta" + (vencidasP.length > 1 ? "s" : "") + " a pagar vencida" + (vencidasP.length > 1 ? "s" : ""),
+            descricao: "Total em aberto: " + fmtNotif(totalP),
             rota: "/Financeiro"
         });
     }
@@ -305,9 +332,10 @@ function montarAlertas(estoque, receber, pagar) {
     return alertas;
 }
 
-// Atualiza número do badge
+// ── Atualizar badge de contador ───────────
 function atualizarContador(alertas) {
     var count = document.getElementById("notif-count");
+    if (!count) return;
 
     if (!alertas || alertas.length === 0) {
         count.style.display = "none";
@@ -318,24 +346,65 @@ function atualizarContador(alertas) {
     count.style.display = "flex";
 }
 
-// Renderiza lista no painel
+// ── Renderizar lista no painel ────────────
 function renderizarLista(alertas) {
     var lista = document.getElementById("notif-lista");
+    if (!lista) return;
 
     if (alertas === null) {
-        lista.innerHTML = "Carregando...";
+        lista.innerHTML = '<div class="notif-carregando">Carregando alertas...</div>';
         return;
     }
 
-    if (alertas.length === 0) {
-        lista.innerHTML = "Nenhum alerta.";
+    if (!alertas.length) {
+        lista.innerHTML = '<div class="notif-vazio"><i class="bi bi-check-circle" style="font-size:2rem;color:#16a34a;display:block;margin-bottom:.8rem"></i>Nenhum alerta no momento.</div>';
         return;
     }
+
+    var classePrioridade = { alta: "notif-item-alta", media: "notif-item-media", baixa: "notif-item-baixa" };
 
     lista.innerHTML = alertas.map(function (a) {
-        return '<a href="' + a.rota + '">' + a.titulo + '</a>';
+        var cls = classePrioridade[a.prioridade] || "notif-item-baixa";
+        return '<div class="notif-item ' + cls + '">' +
+            '<div class="notif-item-header">' +
+            '<div class="notif-item-titulo">' + a.titulo + '</div>' +
+            '</div>' +
+            (a.descricao ? '<p class="notif-item-descricao">' + a.descricao + '</p>' : '') +
+            '<a href="' + a.rota + '" class="notif-item-acao">Ver detalhes</a>' +
+            '</div>';
     }).join("");
 }
 
-// Inicializa tudo ao carregar
+// ── processarDashboardCache (chamado pelo Home) ──
+function processarDashboardCache(d) {
+    if (!d) return;
+
+    var alertas = [];
+
+    if (d.produtosEstoqueCritico > 0) {
+        alertas.push({
+            prioridade: "alta",
+            titulo: d.produtosEstoqueCritico + " produto(s) com estoque crítico",
+            descricao: null,
+            rota: "/Estoque"
+        });
+    }
+
+    if (d.saldoDevedorTotal > 0) {
+        alertas.push({
+            prioridade: "media",
+            titulo: "Saldo devedor de clientes: " + fmtNotif(d.saldoDevedorTotal),
+            descricao: null,
+            rota: "/Financeiro"
+        });
+    }
+
+    if (alertas.length) {
+        alertasCache = alertas;
+        notifCarregadas = true;
+        atualizarContador(alertas);
+    }
+}
+
+// ── Init ─────────────────────────────────
 inicializarMenu();

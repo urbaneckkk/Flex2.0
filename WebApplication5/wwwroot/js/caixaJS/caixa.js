@@ -1,245 +1,861 @@
-// Define a quantidade de itens exibidos por página na listagem de lançamentos
+// ===== CAIXA.JS — FlexGestor (completo) =====
+
 const ITENS_POR_PAGINA = 15;
-
-// Controla a página atual da paginação
 let paginaAtual = 1;
-
-// Controla qual aba está ativa na interface (lancamentos, contas ou historico)
 let abaAtiva = "lancamentos";
-
-// Armazena o estado atual do caixa (null = fechado)
 let caixaAtual = null;
-
-// Lista de lançamentos do caixa atual
 let lancamentos = [];
-
-// Histórico de caixas anteriores
 let historicoList = [];
-
-// Lista de formas de pagamento disponíveis
 let formasPagamento = [];
-
-// Lista de categorias financeiras
 let categorias = [];
-
-// Lista de contas a receber
 let contasReceber = [];
-
-// Cache de clientes para evitar múltiplas requisições
 let clientesCache = [];
-
-// Cache de produtos
 let produtosCache = [];
-
-// Cache de categorias de produto
 let categoriasProdutoCache = [];
-
-// Tipo de lançamento atualmente selecionado no modal
 let tipoLancamentoAtual = "VENDA";
-
-// Categoria selecionada no modal de lançamento
 let _categoriaSelecionada = null;
-
-// Itens da venda rápida
 let _vendaRapidaItens = [];
-
-// Cliente selecionado na venda rápida
 let _clienteSelecionadoVenda = null;
-
-// Índice do produto sendo editado na venda rápida
 let _vrProdutoIdx = null;
-
-// Conta a receber atualmente sendo manipulada
 let _contaReceberAtual = null;
 
-// Função helper para requisições GET, já validando erro HTTP
+// ── Helpers ──────────────────────────────
 async function apiGet(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
     return res.json();
 }
 
-// Função helper para requisições POST com JSON
 async function apiPost(url, body) {
     const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
     });
-
-    // Se erro, tenta extrair mensagem do backend
     if (!res.ok) {
         const t = await res.text().catch(() => "");
         throw new Error(t || `POST ${url} → ${res.status}`);
     }
-
-    // Algumas APIs podem não retornar JSON
     return res.json().catch(() => null);
 }
 
-// Formata valor monetário no padrão brasileiro
 function fmtMoeda(v) {
-    return `R$ ${Number(v || 0)
-        .toFixed(2)
-        .replace(".", ",")
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+    return `R$ ${Number(v || 0).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
-// Formata data e hora considerando timezone local
 function fmtDataHora(s) {
     if (!s) return "—";
-
-    // Remove Z (UTC) para evitar conversão incorreta
     const local = s.endsWith("Z") ? s.slice(0, -1) : s;
-
     return new Date(local).toLocaleString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit"
     });
 }
 
-// Formata apenas data
 function fmtData(s) {
     if (!s) return "—";
     return new Date(s).toLocaleDateString("pt-BR");
 }
 
-// Sistema de toast visual para feedback ao usuário
 function flexToast(msg, tipo = "sucesso") {
-
-    // Define cores por tipo
-    const cores = {
-        sucesso: "#15803d",
-        erro: "#dc2626",
-        aviso: "#d97706"
-    };
-
-    // Define ícones por tipo
-    const icones = {
-        sucesso: "bi-check-circle-fill",
-        erro: "bi-x-circle-fill",
-        aviso: "bi-exclamation-triangle-fill"
-    };
-
-    // Cria elemento do toast
+    const cores = { sucesso: "#15803d", erro: "#dc2626", aviso: "#d97706" };
+    const icones = { sucesso: "bi-check-circle-fill", erro: "bi-x-circle-fill", aviso: "bi-exclamation-triangle-fill" };
     const t = document.createElement("div");
-
-    // Estilização inline para facilitar reaproveitamento
-    t.style.cssText = `
-        position:fixed;
-        top:2rem;
-        right:2rem;
-        background:${cores[tipo]};
-        color:#fff;
-        padding:1.2rem 1.8rem;
-        border-radius:.8rem;
-        font-size:1.4rem;
-        font-family:'Segoe UI',sans-serif;
-        display:flex;
-        align-items:center;
-        gap:.8rem;
-        box-shadow:0 .6rem 2rem rgba(0,0,0,.2);
-        z-index:9999;
-        opacity:0;
-        transform:translateY(-1rem);
-        transition:all .3s ease;
-        max-width:36rem;
-    `;
-
-    // Conteúdo interno do toast
+    t.style.cssText = `position:fixed;top:2rem;right:2rem;background:${cores[tipo]};color:#fff;
+        padding:1.2rem 1.8rem;border-radius:.8rem;font-size:1.4rem;font-family:'Segoe UI',sans-serif;
+        display:flex;align-items:center;gap:.8rem;box-shadow:0 .6rem 2rem rgba(0,0,0,.2);
+        z-index:9999;opacity:0;transform:translateY(-1rem);transition:all .3s ease;max-width:36rem;`;
     t.innerHTML = `<i class="bi ${icones[tipo]}"></i><span>${msg}</span>`;
-
     document.body.appendChild(t);
-
-    // Anima entrada
-    requestAnimationFrame(() => {
-        t.style.opacity = "1";
-        t.style.transform = "translateY(0)";
-    });
-
-    // Remove automaticamente após tempo
+    requestAnimationFrame(() => { t.style.opacity = "1"; t.style.transform = "translateY(0)"; });
     setTimeout(() => {
-        t.style.opacity = "0";
-        t.style.transform = "translateY(-1rem)";
+        t.style.opacity = "0"; t.style.transform = "translateY(-1rem)";
         setTimeout(() => t.remove(), 350);
     }, 3200);
 }
 
-// Verifica se lançamento é entrada com base na categoria
-function isEntrada(l) {
-    return Number(l.tipoCategoria) === 1;
-}
-
-// Soma todas entradas do caixa
-function calcularEntradas() {
-    return lancamentos
-        .filter(l => isEntrada(l))
-        .reduce((a, l) => a + Number(l.valor), 0);
-}
-
-// Soma todas saídas do caixa
-function calcularSaidas() {
-    return lancamentos
-        .filter(l => !isEntrada(l))
-        .reduce((a, l) => a + Number(l.valor), 0);
-}
-
-// Calcula saldo final do caixa
+function isEntrada(l) { return Number(l.tipoCategoria) === 1; }
+function calcularEntradas() { return lancamentos.filter(l => isEntrada(l)).reduce((a, l) => a + Number(l.valor), 0); }
+function calcularSaidas() { return lancamentos.filter(l => !isEntrada(l)).reduce((a, l) => a + Number(l.valor), 0); }
 function calcularSaldo() {
     if (!caixaAtual) return 0;
-
-    return Number(caixaAtual.saldoInicial)
-        + calcularEntradas()
-        - calcularSaidas();
+    return Number(caixaAtual.saldoInicial) + calcularEntradas() - calcularSaidas();
 }
 
-// Função principal que inicializa a tela
+// ── Inicializar ───────────────────────────
 async function inicializar() {
     try {
-
-        // Busca status do caixa
         const statusData = await apiGet("/Caixa/Status");
         caixaAtual = statusData.caixa;
 
-        // Prepara chamadas paralelas
         const promises = [
             apiGet("/Caixa/Historico"),
             apiGet("/Caixa/FormasPagamento"),
             apiGet("/Caixa/Categorias"),
-            apiGet("/Caixa/ContasReceber").catch(() => [])
+            apiGet("/Caixa/ContasReceber").catch(() => []),
+            apiGet("/Cliente/Listar").catch(() => []),
+            apiGet("/Produto/Listar").catch(() => [])
         ];
 
-        // Se caixa aberto, busca também lançamentos e breakdown
         if (caixaAtual) {
             promises.push(apiGet("/Caixa/Lancamentos").catch(() => []));
             promises.push(apiGet("/Caixa/Breakdown").catch(() => []));
         }
 
-        // Executa tudo em paralelo
         const results = await Promise.all(promises);
-
-        // Distribui resultados
         historicoList = results[0];
         formasPagamento = results[1];
         categorias = results[2];
         contasReceber = results[3];
-        lancamentos = caixaAtual ? (results[4] || []) : [];
+        clientesCache = results[4];
+        produtosCache = results[5];
+        lancamentos = caixaAtual ? (results[6] || []) : [];
 
-        // Atualiza UI principal
         atualizarPainel();
 
-        // Se veio breakdown pronto, usa ele
-        if (caixaAtual && results[5]?.length) {
-            renderizarBreakdownData(results[5]);
+        if (caixaAtual && results[7]?.length) {
+            renderizarBreakdownData(results[7]);
         } else {
             atualizarBreakdown();
         }
+
+        renderizarLancamentos();
+        renderizarContas();
+        renderizarHistorico();
 
     } catch (err) {
         console.error("Erro ao inicializar:", err);
         flexToast("Erro ao carregar dados do caixa.", "erro");
     }
 }
+
+// ── Painel superior ───────────────────────
+function atualizarPainel() {
+    const aberto = !!caixaAtual;
+
+    // Status badge
+    const badge = document.getElementById("caixa-status-badge");
+    if (badge) {
+        badge.className = `caixa-status-badge ${aberto ? "aberto" : "fechado"}`;
+        badge.innerHTML = aberto
+            ? '<i class="bi bi-unlock-fill"></i> Aberto'
+            : '<i class="bi bi-lock-fill"></i> Fechado';
+    }
+
+    // Operador e abertura
+    document.getElementById("caixa-operador").textContent = caixaAtual?.nomeOperador || "—";
+    document.getElementById("caixa-abertura").textContent = caixaAtual
+        ? `Aberto em ${fmtDataHora(caixaAtual.dthAbertura)}`
+        : "—";
+
+    // Saldo
+    const saldo = calcularSaldo();
+    const entradas = calcularEntradas();
+    const saidas = calcularSaidas();
+    const liquido = entradas - saidas;
+
+    document.getElementById("caixa-saldo-atual").textContent = fmtMoeda(saldo);
+    document.getElementById("caixa-saldo-inicial").textContent = fmtMoeda(caixaAtual?.saldoInicial || 0);
+    document.getElementById("caixa-entradas").textContent = fmtMoeda(entradas);
+    document.getElementById("caixa-saidas").textContent = fmtMoeda(saidas);
+    const liquidoEl = document.getElementById("caixa-liquido");
+    if (liquidoEl) {
+        liquidoEl.textContent = fmtMoeda(liquido);
+        liquidoEl.className = `resumo-valor ${liquido >= 0 ? "verde" : "vermelho"}`;
+    }
+    document.getElementById("caixa-troco").textContent = fmtMoeda(caixaAtual?.troco || 0);
+
+    // Botões abrir/fechar
+    document.getElementById("btn-abrir").style.display = aberto ? "none" : "";
+    document.getElementById("btn-fechar").style.display = aberto ? "" : "none";
+
+    // Botões de ação (habilitam só com caixa aberto)
+    document.querySelectorAll(".btn-acao-caixa").forEach(b => b.disabled = !aberto);
+
+    // Preenche modal de fechamento
+    document.getElementById("fechar-saldo-inicial-label").textContent = fmtMoeda(caixaAtual?.saldoInicial || 0);
+    document.getElementById("fechar-entradas-label").textContent = fmtMoeda(entradas);
+    document.getElementById("fechar-saidas-label").textContent = fmtMoeda(saidas);
+    const saldoFinal = (caixaAtual?.saldoInicial || 0) + entradas - saidas;
+    document.getElementById("fechar-saldo-calculado-label").textContent = fmtMoeda(saldoFinal);
+    document.getElementById("fechar-saldo-calculado").value = saldoFinal;
+}
+
+function atualizarBreakdown() {
+    const container = document.getElementById("breakdown-lista");
+    if (!container) return;
+
+    if (!caixaAtual) {
+        container.innerHTML = `<div class="breakdown-empty">Abra o caixa para ver o detalhamento.</div>`;
+        return;
+    }
+
+    // Agrupa lançamentos por forma de pagamento
+    const grupos = {};
+    lancamentos.forEach(l => {
+        const fp = l.formaPagamento || "Outros";
+        if (!grupos[fp]) grupos[fp] = { entrada: 0, saida: 0 };
+        if (isEntrada(l)) grupos[fp].entrada += Number(l.valor);
+        else grupos[fp].saida += Number(l.valor);
+    });
+
+    if (!Object.keys(grupos).length) {
+        container.innerHTML = `<div class="breakdown-empty">Nenhum lançamento ainda.</div>`;
+        return;
+    }
+
+    container.innerHTML = Object.entries(grupos).map(([fp, v]) => {
+        const liquido = v.entrada - v.saida;
+        return `
+        <div class="breakdown-item">
+            <div class="breakdown-nome">${fp}</div>
+            <div class="breakdown-valores">
+                <span class="breakdown-entrada">+${fmtMoeda(v.entrada)}</span>
+                <span class="breakdown-saida">−${fmtMoeda(v.saida)}</span>
+                <span class="breakdown-liquido ${liquido >= 0 ? 'verde' : 'vermelho'}">${fmtMoeda(liquido)}</span>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function renderizarBreakdownData(data) {
+    const container = document.getElementById("breakdown-lista");
+    if (!container || !data?.length) { atualizarBreakdown(); return; }
+
+    container.innerHTML = data.map(b => `
+        <div class="breakdown-item">
+            <div class="breakdown-nome">${b.formaPagamento || b.nome || "Outros"}</div>
+            <div class="breakdown-valores">
+                <span class="breakdown-entrada">+${fmtMoeda(b.entradas)}</span>
+                <span class="breakdown-saida">−${fmtMoeda(b.saidas)}</span>
+                <span class="breakdown-liquido ${(b.liquido ?? b.entradas - b.saidas) >= 0 ? 'verde' : 'vermelho'}">${fmtMoeda(b.liquido ?? b.entradas - b.saidas)}</span>
+            </div>
+        </div>`).join("");
+}
+
+// ── Abas ─────────────────────────────────
+function mudarAba(aba) {
+    abaAtiva = aba;
+    ["lancamentos", "contas", "historico"].forEach(a => {
+        document.getElementById(`conteudo-${a}`)?.style && (document.getElementById(`conteudo-${a}`).style.display = a === aba ? "" : "none");
+        document.getElementById(`aba-${a}`)?.classList.toggle("ativa", a === aba);
+    });
+}
+
+// ── Renderizar lançamentos ────────────────
+function renderizarLancamentos() {
+    const tbody = document.querySelector("#tabela-lancamentos tbody");
+    if (!tbody) return;
+
+    if (!lancamentos.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum lançamento neste caixa.</td></tr>`;
+        return;
+    }
+
+    const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
+    const pagina = lancamentos.slice(inicio, inicio + ITENS_POR_PAGINA);
+
+    const TIPO_CONFIG = {
+        VENDA: { classe: "tipo-venda", label: "Venda" },
+        DESPESA: { classe: "tipo-despesa", label: "Despesa" },
+        SANGRIA: { classe: "tipo-sangria", label: "Sangria" },
+        SUPRIMENTO: { classe: "tipo-suprimento", label: "Suprimento" },
+        RECEBIMENTO: { classe: "tipo-recebimento", label: "Recebimento" },
+    };
+
+    tbody.innerHTML = pagina.map(l => {
+        const cfg = TIPO_CONFIG[(l.tipo || "").toUpperCase()] || { classe: "tipo-manual", label: l.tipo || "—" };
+        const entrada = isEntrada(l);
+        return `
+        <tr>
+            <td>${fmtDataHora(l.dthLancamento)}</td>
+            <td><span class="tipo-pill ${cfg.classe}">${cfg.label}</span></td>
+            <td>${l.nomeCategoria || "—"}</td>
+            <td>${l.formaPagamento || "—"}</td>
+            <td>${l.nomeCliente || "—"}</td>
+            <td>${l.descricao || "—"}</td>
+            <td class="${entrada ? "valor-entrada" : "valor-saida"}">${entrada ? "+" : "−"}${fmtMoeda(l.valor)}</td>
+        </tr>`;
+    }).join("");
+}
+
+// ── Renderizar contas a receber ───────────
+function renderizarContas() {
+    const tbody = document.querySelector("#tabela-contas tbody");
+    if (!tbody) return;
+
+    const abertas = contasReceber.filter(c => c.statusAtual !== "PAGO");
+    const vencidas = abertas.filter(c => c.statusAtual === "VENCIDO").length;
+
+    const badge = document.getElementById("badge-contas-vencidas");
+    if (badge) {
+        badge.textContent = vencidas;
+        badge.style.display = vencidas > 0 ? "" : "none";
+    }
+
+    if (!abertas.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma conta a receber em aberto.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = abertas.map(c => {
+        const restante = Math.max(0, c.valorTotal - c.valorPago);
+        const pillClasse = c.statusAtual === "VENCIDO" ? "status-vencido" : "status-aberto";
+        return `
+        <tr>
+            <td><span class="status-pill ${pillClasse}">${c.statusAtual === "VENCIDO" ? "Vencido" : "Aberto"}</span></td>
+            <td>${c.nomeCliente || "—"}</td>
+            <td>${c.descricao || "—"}</td>
+            <td>${fmtData(c.dthVencimento)}</td>
+            <td>${fmtMoeda(c.valorTotal)}</td>
+            <td>${fmtMoeda(c.valorPago)}</td>
+            <td class="${restante > 0 ? 'valor-saida' : ''}">${fmtMoeda(restante)}</td>
+            <td class="area-acoes">
+                <button class="btn-acao btn-receber" title="Receber"
+                    onclick="abrirModalReceberConta(${c.idCategoriaFinanceira || c.id})">
+                    <i class="bi bi-currency-dollar"></i>
+                </button>
+                <button class="btn-acao btn-editar" title="Alterar vencimento"
+                    onclick="abrirModalAlterarVencimento(${c.idCategoriaFinanceira || c.id})">
+                    <i class="bi bi-calendar-event"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join("");
+}
+
+// ── Renderizar histórico ──────────────────
+function renderizarHistorico() {
+    const tbody = document.querySelector("#tabela-historico tbody");
+    if (!tbody) return;
+
+    if (!historicoList.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum histórico de caixa.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = historicoList.map(h => {
+        const diff = Number(h.saldoFinal || 0) - Number(h.saldoInicial || 0);
+        return `
+        <tr>
+            <td><span class="status-pill ${h.fechado ? 'status-fechado' : 'status-aberto'}">${h.fechado ? 'Fechado' : 'Aberto'}</span></td>
+            <td>${h.nomeOperador || "—"}</td>
+            <td>${fmtDataHora(h.dthAbertura)}</td>
+            <td>${h.dthFechamento ? fmtDataHora(h.dthFechamento) : "Em aberto"}</td>
+            <td>${fmtMoeda(h.saldoInicial)}</td>
+            <td>${fmtMoeda(h.saldoFinal)}</td>
+            <td class="${diff >= 0 ? 'valor-entrada' : 'valor-saida'}">${fmtMoeda(diff)}</td>
+        </tr>`;
+    }).join("");
+}
+
+// ═══════════════════════════════════════════
+// MODAL: ABRIR CAIXA
+// ═══════════════════════════════════════════
+function abrirModalAbrirCaixa() {
+    // Pré-preenche com saldo do último caixa fechado
+    const ultimoSaldo = historicoList.find(h => h.fechado)?.saldoFinal || 0;
+    document.getElementById("abrir-saldo-inicial").value = ultimoSaldo > 0 ? ultimoSaldo.toFixed(2) : "";
+    document.getElementById("modal-abrir-caixa").classList.add("open");
+}
+
+function fecharModalAbrirCaixa() {
+    document.getElementById("modal-abrir-caixa").classList.remove("open");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("form-abrir-caixa")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const saldo = parseFloat(document.getElementById("abrir-saldo-inicial").value) || 0;
+        try {
+            await apiPost("/Caixa/Abrir", { SaldoInicial: saldo });
+            fecharModalAbrirCaixa();
+            flexToast("Caixa aberto com sucesso!", "sucesso");
+            await inicializar();
+        } catch (err) {
+            flexToast("Erro ao abrir caixa: " + err.message, "erro");
+        }
+    });
+});
+
+// ═══════════════════════════════════════════
+// MODAL: FECHAR CAIXA
+// ═══════════════════════════════════════════
+function abrirModalFecharCaixa() {
+    atualizarPainel(); // garante que os valores estão atualizados
+    document.getElementById("modal-fechar-caixa").classList.add("open");
+
+    const btnConfirmar = document.getElementById("confirm-fechar-sim");
+    if (btnConfirmar) {
+        btnConfirmar.onclick = null;
+        btnConfirmar.onclick = confirmarFecharCaixa;
+    }
+}
+
+function fecharModalFecharCaixa() {
+    document.getElementById("modal-fechar-caixa").classList.remove("open");
+}
+
+async function confirmarFecharCaixa() {
+    const obs = document.getElementById("fechar-obs")?.value || "";
+    const saldoFinal = parseFloat(document.getElementById("fechar-saldo-calculado")?.value) || 0;
+    try {
+        await apiPost("/Caixa/Fechar", { SaldoFinal: saldoFinal, Observacao: obs });
+        fecharModalFecharCaixa();
+        flexToast("Caixa fechado com sucesso!", "sucesso");
+        await inicializar();
+    } catch (err) {
+        flexToast("Erro ao fechar caixa: " + err.message, "erro");
+    }
+}
+
+// ═══════════════════════════════════════════
+// MODAL: LANÇAMENTO (Despesa / Sangria / Suprimento)
+// ═══════════════════════════════════════════
+function abrirModalLancamento(tipo) {
+    tipoLancamentoAtual = tipo;
+    _categoriaSelecionada = null;
+
+    const modal = document.getElementById("modal-lancamento");
+    const h3 = modal?.querySelector(".modal-header h3");
+    if (h3) h3.textContent = { DESPESA: "Despesa", SANGRIA: "Sangria", SUPRIMENTO: "Suprimento" }[tipo] || tipo;
+
+    // Limpa campos
+    document.getElementById("lanc-valor").value = "";
+    document.getElementById("lanc-descricao").value = "";
+    document.getElementById("lanc-categoria").value = "";
+
+    // Exibe/oculta grupos por tipo
+    const grupoCat = document.getElementById("grupo-categoria");
+    const grupoFp = document.getElementById("grupo-formapgto");
+    if (grupoCat) grupoCat.style.display = tipo === "DESPESA" ? "" : "none";
+    if (grupoFp) grupoFp.style.display = tipo === "DESPESA" ? "" : "none";
+
+    // Popula categorias de despesa
+    if (tipo === "DESPESA") {
+        const lista = document.getElementById("lanc-categoria-lista");
+        const cats = categorias.filter(c => c.tipoCategoria === 2 || c.tipo === "DESPESA" || !c.tipoCategoria);
+        if (lista) {
+            lista.innerHTML = cats.map(c => `
+                <div class="wizard-item" onclick="selecionarCategoria(${c.idCategoriaFinanceira}, '${(c.nome || '').replace(/'/g, "\\'")}')">
+                    <i class="bi bi-tag-fill wizard-item-check"></i>
+                    <div class="wizard-item-info">
+                        <div class="wizard-item-nome">${c.nome}</div>
+                    </div>
+                </div>`).join("") || `<div class="wizard-vazio">Nenhuma categoria encontrada.</div>`;
+        }
+
+        // Popula formas de pagamento
+        const sel = document.getElementById("lanc-formapgto");
+        if (sel) {
+            sel.innerHTML = formasPagamento.map(f =>
+                `<option value="${f.idFormaPagamento}">${f.nome}</option>`).join("");
+        }
+    }
+
+    modal?.classList.add("open");
+}
+
+function selecionarCategoria(id, nome) {
+    _categoriaSelecionada = id;
+    document.getElementById("lanc-categoria").value = id;
+
+    document.querySelectorAll("#lanc-categoria-lista .wizard-item").forEach(el => {
+        el.classList.remove("selecionado");
+        if (el.textContent.includes(nome)) el.classList.add("selecionado");
+    });
+}
+
+function fecharModalLancamento() {
+    document.getElementById("modal-lancamento").classList.remove("open");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("form-lancamento")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const valor = parseFloat(document.getElementById("lanc-valor").value);
+        if (!valor || valor <= 0) { flexToast("Informe um valor válido.", "aviso"); return; }
+
+        if (tipoLancamentoAtual === "DESPESA" && !_categoriaSelecionada) {
+            flexToast("Selecione uma categoria.", "aviso"); return;
+        }
+
+        const payload = {
+            Tipo: tipoLancamentoAtual,
+            Valor: valor,
+            Descricao: document.getElementById("lanc-descricao").value || null,
+            IdCategoriaFinanceira: _categoriaSelecionada || null,
+            IdFormaPagamento: parseInt(document.getElementById("lanc-formapgto")?.value) || null
+        };
+
+        try {
+            await apiPost("/Caixa/Lancamento", payload);
+            fecharModalLancamento();
+            flexToast("Lançamento registrado!", "sucesso");
+            const novos = await apiGet("/Caixa/Lancamentos").catch(() => []);
+            lancamentos = novos;
+            atualizarPainel();
+            atualizarBreakdown();
+            renderizarLancamentos();
+        } catch (err) {
+            flexToast("Erro ao lançar: " + err.message, "erro");
+        }
+    });
+});
+
+// ═══════════════════════════════════════════
+// MODAL: VENDA RÁPIDA
+// ═══════════════════════════════════════════
+function abrirModalVendaRapida() {
+    _vendaRapidaItens = [];
+    _clienteSelecionadoVenda = null;
+
+    document.getElementById("vr-itens-body").innerHTML = "";
+    document.getElementById("vr-total").textContent = "R$ 0,00";
+    document.getElementById("vr-descricao").value = "";
+    document.getElementById("vr-cpf-wrap").style.display = "none";
+    document.getElementById("vr-fiado-wrap").style.display = "none";
+    document.getElementById("vr-vencimento-wrap").style.display = "none";
+    document.getElementById("vr-cpf").value = "";
+    document.getElementById("vr-cliente-info").style.display = "none";
+    document.getElementById("vr-fiado").checked = false;
+
+    // Popula formas de pagamento
+    const sel = document.getElementById("vr-formapgto");
+    if (sel) {
+        sel.innerHTML = formasPagamento.map(f =>
+            `<option value="${f.idFormaPagamento}">${f.nome}</option>`).join("");
+    }
+
+    adicionarItemVenda(); // começa com 1 item
+    document.getElementById("modal-venda-rapida").classList.add("open");
+}
+
+function fecharModalVendaRapida() {
+    document.getElementById("modal-venda-rapida").classList.remove("open");
+}
+
+function adicionarItemVenda() {
+    const idx = _vendaRapidaItens.length;
+    _vendaRapidaItens.push({ idProduto: null, nome: "", quantidade: 1, preco: 0 });
+
+    const tbody = document.getElementById("vr-itens-body");
+    const tr = document.createElement("tr");
+    tr.dataset.idx = idx;
+    tr.innerHTML = `
+        <td class="col-produto">
+            <div class="produto-cell">
+                <input type="text" readonly placeholder="Clique para buscar produto..."
+                    value="" onclick="abrirBuscaProdutoVR(${idx})">
+                <button type="button" class="btn-buscar-produto" onclick="abrirBuscaProdutoVR(${idx})">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </td>
+        <td class="col-qtde">
+            <input type="number" min="1" value="1"
+                oninput="atualizarItemVenda(${idx}, 'quantidade', this.value)">
+        </td>
+        <td class="col-preco">
+            <input type="number" min="0" step="0.01" value="0.00"
+                oninput="atualizarItemVenda(${idx}, 'preco', this.value)">
+        </td>
+        <td class="col-sub">
+            <span class="subtotal-label" id="vr-sub-${idx}">R$ 0,00</span>
+        </td>
+        <td class="col-del">
+            <button type="button" class="btn-del-item" onclick="removerItemVenda(${idx})">
+                <i class="bi bi-trash3-fill"></i>
+            </button>
+        </td>`;
+    tbody.appendChild(tr);
+}
+
+function atualizarItemVenda(idx, campo, valor) {
+    if (!_vendaRapidaItens[idx]) return;
+    _vendaRapidaItens[idx][campo] = campo === "quantidade" ? parseInt(valor) || 1 : parseFloat(valor) || 0;
+    const sub = _vendaRapidaItens[idx].quantidade * _vendaRapidaItens[idx].preco;
+    const subEl = document.getElementById(`vr-sub-${idx}`);
+    if (subEl) subEl.textContent = fmtMoeda(sub);
+    recalcularTotalVenda();
+}
+
+function removerItemVenda(idx) {
+    const tr = document.querySelector(`#vr-itens-body tr[data-idx="${idx}"]`);
+    if (tr) tr.remove();
+    _vendaRapidaItens[idx] = null;
+    recalcularTotalVenda();
+}
+
+function recalcularTotalVenda() {
+    const total = _vendaRapidaItens
+        .filter(Boolean)
+        .reduce((s, item) => s + item.quantidade * item.preco, 0);
+    document.getElementById("vr-total").textContent = fmtMoeda(total);
+    document.getElementById("vr-valor").value = total.toFixed(2);
+}
+
+// ── Busca de produto (Venda Rápida) ──────
+function abrirBuscaProdutoVR(idx) {
+    _vrProdutoIdx = idx;
+    document.getElementById("input-busca-produto-vr").value = "";
+    filtrarListaProdutosVR("");
+    document.getElementById("modal-busca-produto-vr").classList.add("open");
+}
+
+function fecharBuscaProdutoVR() {
+    document.getElementById("modal-busca-produto-vr").classList.remove("open");
+}
+
+function filtrarListaProdutosVR(termo) {
+    const lista = document.getElementById("lista-busca-produtos-vr");
+    const t = (termo || "").toLowerCase();
+
+    const filtrados = produtosCache
+        .filter(p => (p.fAtivo === true || p.fAtivo === 1))
+        .filter(p => !t || (p.nome || "").toLowerCase().includes(t) || (p.sku || p.skuProduto || "").toLowerCase().includes(t));
+
+    if (!filtrados.length) {
+        lista.innerHTML = `<div class="busca-vazia"><i class="bi bi-box-seam"></i>Nenhum produto encontrado.</div>`;
+        return;
+    }
+
+    lista.innerHTML = filtrados.map(p => `
+        <div class="busca-item" onclick="selecionarProdutoVR(${p.idProduto})">
+            <div class="busca-item-info">
+                <div class="busca-item-nome">${p.nome}</div>
+                <div class="busca-item-sub">SKU: ${p.sku || p.skuProduto || "—"}</div>
+            </div>
+            <span class="busca-item-preco">${fmtMoeda(p.precoVenda || p.PrecoVenda)}</span>
+        </div>`).join("");
+}
+
+function selecionarProdutoVR(idProduto) {
+    const p = produtosCache.find(x => x.idProduto === idProduto);
+    if (!p || _vrProdutoIdx === null) return;
+
+    _vendaRapidaItens[_vrProdutoIdx] = {
+        idProduto: p.idProduto,
+        nome: p.nome,
+        quantidade: 1,
+        preco: p.precoVenda || p.PrecoVenda || 0
+    };
+
+    const tr = document.querySelector(`#vr-itens-body tr[data-idx="${_vrProdutoIdx}"]`);
+    if (tr) {
+        tr.querySelector("input[readonly]").value = p.nome;
+        tr.querySelector("input[type='number']").value = 1;
+        tr.querySelectorAll("input[type='number']")[1].value = (p.precoVenda || p.PrecoVenda || 0).toFixed(2);
+        const sub = 1 * (p.precoVenda || p.PrecoVenda || 0);
+        const subEl = document.getElementById(`vr-sub-${_vrProdutoIdx}`);
+        if (subEl) subEl.textContent = fmtMoeda(sub);
+    }
+
+    recalcularTotalVenda();
+    fecharBuscaProdutoVR();
+    _vrProdutoIdx = null;
+}
+
+// ── CPF / Fiado (Venda Rápida) ────────────
+function toggleCpfVenda() {
+    const wrap = document.getElementById("vr-cpf-wrap");
+    if (wrap) wrap.style.display = wrap.style.display === "none" ? "" : "none";
+}
+
+async function buscarClienteCpf() {
+    const cpf = document.getElementById("vr-cpf").value.replace(/\D/g, "");
+    if (cpf.length < 11) { flexToast("Informe um CPF válido.", "aviso"); return; }
+
+    const cliente = clientesCache.find(c => (c.cpfCNPJ || "").replace(/\D/g, "") === cpf);
+    const infoEl = document.getElementById("vr-cliente-info");
+    const fiadoWrap = document.getElementById("vr-fiado-wrap");
+
+    if (!cliente) {
+        flexToast("Cliente não encontrado.", "aviso");
+        infoEl.style.display = "none";
+        fiadoWrap.style.display = "none";
+        _clienteSelecionadoVenda = null;
+        return;
+    }
+
+    _clienteSelecionadoVenda = cliente;
+    infoEl.innerHTML = `<i class="bi bi-person-check-fill"></i> ${cliente.nome}`;
+    infoEl.style.display = "flex";
+    fiadoWrap.style.display = "";
+}
+
+function toggleFiado() {
+    const checked = document.getElementById("vr-fiado").checked;
+    document.getElementById("vr-vencimento-wrap").style.display = checked ? "" : "none";
+    document.getElementById("vr-formapgto-wrap").style.display = checked ? "none" : "";
+}
+
+// ── Submit Venda Rápida ───────────────────
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("form-venda-rapida")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const itens = _vendaRapidaItens.filter(Boolean).filter(i => i.idProduto);
+        if (!itens.length) { flexToast("Adicione pelo menos um produto.", "aviso"); return; }
+
+        const valor = parseFloat(document.getElementById("vr-valor").value) || 0;
+        if (valor <= 0) { flexToast("Valor inválido.", "aviso"); return; }
+
+        const fiado = document.getElementById("vr-fiado").checked;
+        const vencimento = document.getElementById("vr-vencimento").value;
+
+        if (fiado && !vencimento) { flexToast("Informe o vencimento para venda no fiado.", "aviso"); return; }
+        if (fiado && !_clienteSelecionadoVenda) { flexToast("Busque e selecione um cliente para venda no fiado.", "aviso"); return; }
+
+        const payload = {
+            Itens: itens.map(i => ({ IdProduto: i.idProduto, Quantidade: i.quantidade, PrecoUnitario: i.preco })),
+            Valor: valor,
+            IdFormaPagamento: parseInt(document.getElementById("vr-formapgto").value) || null,
+            Descricao: document.getElementById("vr-descricao").value || null,
+            IdCliente: _clienteSelecionadoVenda?.idCliente || null,
+            Fiado: fiado,
+            DthVencimento: fiado ? vencimento : null
+        };
+
+        try {
+            await apiPost("/Caixa/VendaRapida", payload);
+            fecharModalVendaRapida();
+            flexToast("Venda registrada!", "sucesso");
+            lancamentos = await apiGet("/Caixa/Lancamentos").catch(() => []);
+            atualizarPainel();
+            atualizarBreakdown();
+            renderizarLancamentos();
+        } catch (err) {
+            flexToast("Erro ao registrar venda: " + err.message, "erro");
+        }
+    });
+});
+
+// ── Cadastro rápido de produto ────────────
+function fecharCadastroProdutoRapido() {
+    document.getElementById("modal-novo-produto-rapido")?.classList.remove("open");
+}
+
+// ═══════════════════════════════════════════
+// MODAL: RECEBER CONTA
+// ═══════════════════════════════════════════
+function abrirModalReceberConta(id) {
+    const conta = contasReceber.find(c => (c.idCategoriaFinanceira || c.id) === id);
+    if (!conta) return;
+
+    _contaReceberAtual = conta;
+    document.getElementById("receber-categoria-id").value = id;
+    document.getElementById("receber-cliente").textContent = conta.nomeCliente || "—";
+    const restante = Math.max(0, conta.valorTotal - conta.valorPago);
+    document.getElementById("receber-valor-restante").textContent = fmtMoeda(restante);
+
+    const sel = document.getElementById("receber-formapgto");
+    if (sel) {
+        sel.innerHTML = formasPagamento.map(f =>
+            `<option value="${f.idFormaPagamento}">${f.nome}</option>`).join("");
+    }
+
+    document.getElementById("modal-receber-conta").classList.add("open");
+}
+
+function fecharModalReceberConta() {
+    document.getElementById("modal-receber-conta").classList.remove("open");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("form-receber-conta")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const id = parseInt(document.getElementById("receber-categoria-id").value);
+        const valor = parseFloat(document.getElementById("receber-valor").value);
+        const idFP = parseInt(document.getElementById("receber-formapgto").value);
+
+        if (!valor || valor <= 0) { flexToast("Informe um valor válido.", "aviso"); return; }
+
+        try {
+            await apiPost("/Caixa/ReceberConta", {
+                IdCategoriaFinanceira: id,
+                Valor: valor,
+                IdFormaPagamento: idFP
+            });
+            fecharModalReceberConta();
+            flexToast("Recebimento registrado!", "sucesso");
+            [contasReceber, lancamentos] = await Promise.all([
+                apiGet("/Caixa/ContasReceber").catch(() => []),
+                apiGet("/Caixa/Lancamentos").catch(() => [])
+            ]);
+            atualizarPainel();
+            renderizarContas();
+            renderizarLancamentos();
+        } catch (err) {
+            flexToast("Erro ao registrar recebimento: " + err.message, "erro");
+        }
+    });
+});
+
+// ═══════════════════════════════════════════
+// MODAL: ALTERAR VENCIMENTO
+// ═══════════════════════════════════════════
+let _contaVencimentoAtual = null;
+
+function abrirModalAlterarVencimento(id) {
+    _contaVencimentoAtual = id;
+    const conta = contasReceber.find(c => (c.idCategoriaFinanceira || c.id) === id);
+    if (conta?.dthVencimento) {
+        document.getElementById("venc-data").value = conta.dthVencimento.substring(0, 10);
+    }
+    document.getElementById("modal-alterar-vencimento").classList.add("open");
+}
+
+function fecharModalAlterarVencimento() {
+    document.getElementById("modal-alterar-vencimento").classList.remove("open");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("form-alterar-vencimento")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const data = document.getElementById("venc-data").value;
+        if (!data) { flexToast("Informe a data.", "aviso"); return; }
+
+        try {
+            await apiPost("/Caixa/AlterarVencimento", {
+                Id: _contaVencimentoAtual,
+                NovaData: data
+            });
+            fecharModalAlterarVencimento();
+            flexToast("Vencimento atualizado!", "sucesso");
+            contasReceber = await apiGet("/Caixa/ContasReceber").catch(() => []);
+            renderizarContas();
+        } catch (err) {
+            flexToast("Erro: " + err.message, "erro");
+        }
+    });
+});
+
+// ═══════════════════════════════════════════
+// FECHAR MODAIS AO CLICAR FORA
+// ═══════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", () => {
+    const modais = [
+        ["modal-abrir-caixa", fecharModalAbrirCaixa],
+        ["modal-fechar-caixa", fecharModalFecharCaixa],
+        ["modal-lancamento", fecharModalLancamento],
+        ["modal-venda-rapida", fecharModalVendaRapida],
+        ["modal-busca-produto-vr", fecharBuscaProdutoVR],
+        ["modal-novo-produto-rapido", fecharCadastroProdutoRapido],
+        ["modal-receber-conta", fecharModalReceberConta],
+        ["modal-alterar-vencimento", fecharModalAlterarVencimento],
+    ];
+
+    modais.forEach(([id, fn]) => {
+        document.getElementById(id)?.addEventListener("click", function (e) {
+            if (e.target === this) fn();
+        });
+    });
+
+    // Garante aba inicial
+    mudarAba("lancamentos");
+
+    // Inicializa tela
+    inicializar();
+});
