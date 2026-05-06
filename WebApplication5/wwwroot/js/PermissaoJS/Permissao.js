@@ -18,7 +18,7 @@ const MENU_ICONES = {
 
 const CARGO_CORES = [
     'cargo-cor-1', 'cargo-cor-2', 'cargo-cor-3', 'cargo-cor-4', 'cargo-cor-5'
-];
+]; 
 
 async function apiGet(url) {
     const res = await fetch(url);
