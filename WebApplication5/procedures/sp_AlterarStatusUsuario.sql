@@ -1,0 +1,1 @@
+﻿sp_AlterarStatusUsuario	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	CREATE DEFINER=`root`@`%` PROCEDURE `sp_AlterarStatusUsuario`(\n    IN p_idUsuario INT\n)\nBEGIN\n    UPDATE Usuario\n    SET fAtivo = NOT fAtivo\n    WHERE idUsuario = p_idUsuario;\nEND	utf8mb4	utf8mb4_0900_ai_ci	utf8mb4_0900_ai_ci

@@ -1,0 +1,1 @@
+﻿sp_ExcluirContaReceber	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	CREATE DEFINER=`root`@`%` PROCEDURE `sp_ExcluirContaReceber`(IN p_idContaReceber INT)\nBEGIN\n\n    UPDATE ContaReceber SET fAtivo = 0\n\n    WHERE idContaReceber = p_idContaReceber;\n\nEND	utf8mb4	utf8mb4_0900_ai_ci	utf8mb4_0900_ai_ci

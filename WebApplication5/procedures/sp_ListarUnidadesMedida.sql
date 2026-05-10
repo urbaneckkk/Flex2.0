@@ -1,0 +1,1 @@
+﻿sp_ListarUnidadesMedida	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	CREATE DEFINER=`root`@`%` PROCEDURE `sp_ListarUnidadesMedida`()\nBEGIN\n\n    SELECT idUnidade, Sigla, Descricao\n\n    FROM UnidadeMedida\n\n    WHERE fAtivo = 1\n\n    ORDER BY Sigla;\n\nEND	utf8mb4	utf8mb4_0900_ai_ci	utf8mb4_0900_ai_ci

@@ -1,0 +1,1 @@
+﻿sp_InvalidarTokenReset	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	CREATE DEFINER=`root`@`%` PROCEDURE `sp_InvalidarTokenReset`(\n\n    IN token VARCHAR(200)\n\n)\nBEGIN\n\n    UPDATE TokenResetSenha SET fUsado = 1\n\n    WHERE token = token;\n\nEND	utf8mb4	utf8mb4_0900_ai_ci	utf8mb4_0900_ai_ci
