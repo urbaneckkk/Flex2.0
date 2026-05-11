@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, text
 
 DB_URL = os.getenv(
     "FLEXGESTOR_DB_URL",
-    "mysql+mysqlconnector://root:XpqAjrmizTqhGUBlfIqszKWqOyNmItya@turntable.proxy.rlwy.net:27476/FlexGestor"
+    "mysql+mysqlconnector://user:pass@host:port/FlexGestor"
 )
 
 
