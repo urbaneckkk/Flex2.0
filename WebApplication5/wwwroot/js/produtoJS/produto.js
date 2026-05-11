@@ -68,16 +68,20 @@ async function carregarProdutos() {
 async function carregarCategorias() {
     try {
         categorias = await apiGet("/CategoriaProduto/Listar");
-        const sels = document.querySelectorAll(".sel-categoria");
-        sels.forEach(sel => {
-            sel.innerHTML = `<option value="">Selecione...</option>`;
-            categorias.filter(c => c.fAtivo).forEach(c => {
-                const opt = document.createElement("option");
-                opt.value = c.idCategoria;
-                opt.textContent = c.nome;
-                sel.appendChild(opt);
-            });
+
+        const ativas = categorias.filter(c => c.fAtivo);
+        const opcoes = `<option value="">Selecione...</option>` +
+            ativas.map(c => `<option value="${c.idCategoria}">${c.nome}</option>`).join("");
+
+        // por classe (modal novo/edição)
+        document.querySelectorAll(".sel-categoria").forEach(sel => {
+            sel.innerHTML = opcoes;
         });
+
+        // por ID como fallback
+        const porId = document.getElementById("prod-categoria");
+        if (porId) porId.innerHTML = opcoes;
+
     } catch (err) {
         console.warn("Categorias:", err.message);
     }
@@ -234,23 +238,30 @@ function abrirModalEdicao(id) {
     if (!p) return;
 
     modoEdicao = id;
-    document.querySelector("#modal-produto .modal-header h3").textContent = "Editar Produto";
+    document.querySelector("#modal-produto .modal-header h3").innerHTML =
+        '<i class="bi bi-pencil-fill"></i> Editar Produto';
 
-    // Preenche campos do formulário
-    const set = (elId, val) => {
-        const el = document.getElementById(elId);
-        if (el) el.value = val ?? "";
-    };
+    document.getElementById("nome").value = p.nome ?? "";
+    document.getElementById("codProduto").value = p.sku ?? p.skuProduto ?? "";
+    document.getElementById("codBarras").value = p.codigoBarras ?? "";
+    document.getElementById("descricao").value = p.descricao ?? "";
+    document.getElementById("precoCusto").value = p.precoCusto ?? p.PrecoCusto ?? "";
+    document.getElementById("precoVenda").value = p.precoVenda ?? p.PrecoVenda ?? "";
+    document.getElementById("unidade").value = p.unidade ?? "";
 
-    set("prod-nome", p.nome);
-    set("prod-sku", p.sku ?? p.skuProduto);
-    set("prod-codbarras", p.codigoBarras);
-    set("prod-preco-custo", p.precoCusto ?? p.PrecoCusto);
-    set("prod-preco-venda", p.precoVenda ?? p.PrecoVenda);
-    set("prod-descricao", p.descricao);
-    set("prod-unidade", p.unidade);
-    set("prod-categoria", p.idCategoria ?? p.IdCategoria);
+    carregarCategorias().then(() => {
+        document.getElementById("prod-categoria").value = p.idCategoria ?? "";
+    });
 
+    document.getElementById("modal-produto").classList.add("open");
+}
+
+function abrirModal() {
+    modoEdicao = null;
+    document.querySelector("#modal-produto .modal-header h3").innerHTML =
+        '<i class="bi bi-plus-circle-fill"></i> Novo Produto';
+    document.getElementById("formProduto").reset();
+    carregarCategorias();
     document.getElementById("modal-produto").classList.add("open");
 }
 
@@ -315,37 +326,29 @@ async function alterarStatus(id) {
 // SUBMIT — CRIAR / EDITAR PRODUTO
 // ──────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-
-    // Filtro de status inicial
     document.getElementById("btn-filtro-todos")?.classList.add("ativo-sel");
-
-    // Carrega dados iniciais
     carregarProdutos();
     carregarCategorias();
 
-    // Submit do formulário de produto (criar ou editar)
-    document.getElementById("form-produto")?.addEventListener("submit", async function (e) {
-        e.preventDefault();
-
-        const nome = lerCampo("prod-nome");
+    // Botão salvar produto
+    document.getElementById("btnSalvar")?.addEventListener("click", async function () {
+        const nome = document.getElementById("nome")?.value?.trim();
         if (!nome) { flexToast("Nome é obrigatório.", "aviso"); return; }
 
         const payload = {
             IdProduto: modoEdicao ?? 0,
             Nome: nome,
-            SKU: lerCampo("prod-sku"),
-            CodigoBarras: lerCampo("prod-codbarras"),
-            PrecoCusto: Number(document.getElementById("prod-preco-custo")?.value || 0),
-            PrecoVenda: Number(document.getElementById("prod-preco-venda")?.value || 0),
-            Descricao: lerCampo("prod-descricao"),
-            Unidade: lerCampo("prod-unidade"),
+            SKU: document.getElementById("codProduto")?.value?.trim() || null,
+            CodigoBarras: document.getElementById("codBarras")?.value?.trim() || null,
+            Descricao: document.getElementById("descricao")?.value?.trim() || null,
+            PrecoCusto: Number(document.getElementById("precoCusto")?.value || 0),
+            PrecoVenda: Number(document.getElementById("precoVenda")?.value || 0),
+            Unidade: document.getElementById("unidade")?.value?.trim() || null,
             IdCategoria: Number(document.getElementById("prod-categoria")?.value) || null,
             FAtivo: true
         };
 
-        const btn = this.querySelector('[type="submit"]');
-        btn.disabled = true;
-
+        this.disabled = true;
         try {
             if (modoEdicao) {
                 await apiPost("/Produto/Editar", payload);
@@ -359,27 +362,31 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             flexToast("Erro ao salvar: " + err.message, "erro");
         } finally {
-            btn.disabled = false;
+            this.disabled = false;
         }
     });
 
-    // Submit dos dados fiscais
-    document.getElementById("form-fiscal")?.addEventListener("submit", async function (e) {
-        e.preventDefault();
+    // Botão salvar fiscal
+    document.getElementById("btnSalvarFiscal")?.addEventListener("click", async function () {
         if (!produtoFiscalAtual) return;
+        const ncm = document.getElementById("fiscal-ncm")?.value?.trim();
+        const cfop = document.getElementById("fiscal-cfop")?.value;
+        if (!ncm || ncm.length !== 8) { flexToast("NCM deve ter 8 dígitos.", "aviso"); return; }
+        if (!cfop) { flexToast("Selecione o CFOP.", "aviso"); return; }
 
         const payload = {
             IdProduto: produtoFiscalAtual,
-            NCM: lerCampo("fiscal-ncm"),
-            CFOP: lerCampo("fiscal-cfop"),
-            CSOSN: lerCampo("fiscal-csosn"),
-            Origem: lerCampo("fiscal-origem") ?? "0",
-            CEST: lerCampo("fiscal-cest")
+            NCM: ncm,
+            CFOP: cfop,
+            Origem: parseInt(document.getElementById("fiscal-origem")?.value ?? "0"),
+            CSOSN: document.getElementById("fiscal-csosn")?.value || null,
+            CstPIS: document.getElementById("fiscal-cst-pis")?.value || "07",
+            AliqPIS: Number(document.getElementById("fiscal-aliq-pis")?.value || 0.65),
+            CstCOFINS: document.getElementById("fiscal-cst-cofins")?.value || "07",
+            AliqCOFINS: Number(document.getElementById("fiscal-aliq-cofins")?.value || 3.00)
         };
 
-        const btn = this.querySelector('[type="submit"]');
-        btn.disabled = true;
-
+        this.disabled = true;
         try {
             await apiPost("/Produto/SalvarFiscal", payload);
             flexToast("Dados fiscais salvos!", "sucesso");
@@ -388,15 +395,17 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             flexToast("Erro ao salvar fiscal: " + err.message, "erro");
         } finally {
-            btn.disabled = false;
+            this.disabled = false;
         }
     });
 
-    // Fechar modais clicando fora
-    document.getElementById("modal-produto")?.addEventListener("click", function (e) {
-        if (e.target === this) fecharModal();
-    });
-    document.getElementById("modal-fiscal")?.addEventListener("click", function (e) {
-        if (e.target === this) fecharModalFiscal();
+    // Fechar modais ao clicar fora
+    ["modal-produto", "modal-fiscal"].forEach(id => {
+        document.getElementById(id)?.addEventListener("click", function (e) {
+            if (e.target === this) {
+                if (id === "modal-produto") fecharModal();
+                else fecharModalFiscal();
+            }
+        });
     });
 });

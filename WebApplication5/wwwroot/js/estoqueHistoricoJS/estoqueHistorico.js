@@ -86,7 +86,7 @@ function renderizar() {
     const lista = todosHistorico.filter(h => {
         // Filtro por tipo
         if (filtroTipo !== 'todos') {
-            const tipoNorm = (h.tipo ?? '').toUpperCase();
+            const tipoNorm = (h.tipoMovimentacao ?? h.tipo ?? '').toUpperCase();
             if (tipoNorm !== filtroTipo.toUpperCase()) return false;
         }
 
@@ -128,22 +128,20 @@ function renderizar() {
     };
 
     tbody.innerHTML = pagina.map(h => {
-        const tipoKey = (h.tipo ?? '').toUpperCase();
+        const tipoKey = (h.tipoMovimentacao ?? h.tipo ?? '').toUpperCase();
         const cfg = CONFIG_TIPO[tipoKey] ?? { classe: 'mov-ajuste', qtdClasse: 'qtd-ajuste', label: h.tipo, prefixo: '' };
 
         return `
         <tr>
             <td>${fmtDataHora(h.dthMovimentacao)}</td>
-            <td>${h.nomeProduto ?? '—'}</td>
-            <td>
-                <span class="badge-mov ${cfg.classe}">${cfg.label}</span>
-            </td>
+            <td>${h.nomeProduto ?? h.NomeProduto ?? '—'}</td>
+            <td><span class="badge-mov ${cfg.classe}">${cfg.label}</span></td>
             <td style="text-align:right">
-                <strong class="${cfg.qtdClasse}">${cfg.prefixo}${h.quantidade ?? 0}</strong>
+                <strong class="${cfg.qtdClasse}">${cfg.prefixo}${h.quantidade ?? h.Quantidade ?? 0}</strong>
             </td>
             <td>${h.lote || '—'}</td>
-            <td>${h.nomeUsuario || '—'}</td>
-            <td>${h.motivo || h.observacao || '—'}</td>
+            <td>${h.nomeUsuario ?? h.NomeUsuario ?? '—'}</td>
+            <td>${h.motivo ?? h.observacao ?? h.Observacao ?? '—'}</td>
         </tr>`;
     }).join('');
 

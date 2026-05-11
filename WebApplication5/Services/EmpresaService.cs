@@ -27,11 +27,11 @@ namespace WebApplication5.Services
             _repo.SalvarEndereco(idEmpresa, dto);
         }
 
-        public EmpresaConfigFiscalModel? BuscarConfigFiscal(int idEmpresa)
-            => _repo.BuscarConfigFiscal(idEmpresa);
+        //public EmpresaConfigFiscalModel? BuscarConfigFiscal(int idEmpresa)
+        //    => _repo.BuscarConfigFiscal(idEmpresa);
 
-        public void SalvarConfigFiscal(int idEmpresa, SalvarConfigFiscalDto dto)
-            => _repo.SalvarConfigFiscal(idEmpresa, dto);
+        //public void SalvarConfigFiscal(int idEmpresa, SalvarConfigFiscalDto dto)
+        //    => _repo.SalvarConfigFiscal(idEmpresa, dto);
 
         public void SalvarCertificado(int idEmpresa, IFormFile arquivo, string senha)
         {

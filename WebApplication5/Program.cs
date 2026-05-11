@@ -34,6 +34,12 @@ builder.Services.AddScoped<ProdutoRepository>();
 builder.Services.AddScoped<ProdutoService>();
 builder.Services.AddScoped<EstoqueRepository>();
 builder.Services.AddScoped<EstoqueService>();
+builder.Services.AddScoped<EstoqueHistoricoRepository>(x =>
+    new EstoqueHistoricoRepository(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    ));
+
+builder.Services.AddScoped<EstoqueHistoricoService>();
 builder.Services.AddScoped<PedidoRepository>();
 builder.Services.AddScoped<PedidoService>();
 
@@ -64,6 +70,7 @@ builder.Services.AddScoped<FinanceiroService>();
 builder.Services.AddScoped<DespesaRepository>();
 builder.Services.AddScoped<DespesaService>();
 
+
 // Empresa
 builder.Services.AddScoped<EmpresaRepository>();
 builder.Services.AddScoped<EmpresaService>();
@@ -71,6 +78,7 @@ builder.Services.AddScoped<EmpresaService>();
 // Permissão
 builder.Services.AddScoped<PermissaoRepository>();
 builder.Services.AddScoped<PermissaoService>();
+
 
 builder.Services.AddSession();
 builder.Services.AddHttpContextAccessor();

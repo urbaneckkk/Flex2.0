@@ -298,3 +298,315 @@ function renderizarTabela() {
         </tr>`;
     }).join("");
 }
+
+// ── Modal: Inserir no Estoque (Wizard 4 etapas) ───────────────────────────
+
+function abrirModalInserir() {
+    etapaInserir = 1;
+    produtoSelecionado = null;
+    fornecedorSelecionado = null;
+    document.getElementById("ins-busca-produto").value = "";
+    document.getElementById("ins-qtd").value = "";
+    document.getElementById("ins-min").value = "";
+    document.getElementById("ins-max").value = "";
+    document.getElementById("ins-local").value = "";
+    document.getElementById("ins-busca-fornecedor").value = "";
+    document.getElementById("ins-preco-compra").value = "";
+    document.getElementById("ins-painel-preco").style.display = "none";
+    document.getElementById("mensagemErro").style.display = "none";
+    irParaEtapaInserir(1);
+    carregarProdutosBase().then(() => renderizarListaProdutos(""));
+    carregarFornecedores().then(() => renderizarListaFornecedores(""));
+    document.getElementById("modal-inserir").classList.add("open");
+}
+
+function fecharModalInserir() {
+    document.getElementById("modal-inserir").classList.remove("open");
+}
+
+function irParaEtapaInserir(etapa) {
+    etapaInserir = etapa;
+    for (let i = 1; i <= TOTAL_ETAPAS; i++) {
+        document.getElementById(`ins-etapa-${i}`)?.classList.toggle("ativa", i === etapa);
+        const step = document.querySelectorAll(".stepper .step")[i - 1];
+        if (step) step.classList.toggle("active", i === etapa);
+    }
+    document.getElementById("ins-btn-voltar").style.display = etapa > 1 ? "" : "none";
+    document.getElementById("ins-btn-proximo").style.display = etapa < TOTAL_ETAPAS ? "" : "none";
+    document.getElementById("ins-btn-salvar").style.display = etapa === TOTAL_ETAPAS ? "" : "none";
+
+    if (etapa === TOTAL_ETAPAS) preencherResumoInserir();
+}
+
+function renderizarListaProdutos(termo) {
+    const lista_el = document.getElementById("ins-lista-produtos");
+    const filtrados = produtosBase.filter(p =>
+        !termo || (p.nome ?? "").toLowerCase().includes(termo.toLowerCase()) ||
+        (p.sku ?? "").toLowerCase().includes(termo.toLowerCase())
+    );
+    if (!filtrados.length) {
+        lista_el.innerHTML = `<div class="wizard-vazio"><i class="bi bi-box-seam"></i>Nenhum produto encontrado.</div>`;
+        return;
+    }
+    lista_el.innerHTML = filtrados.map(p => `
+        <div class="wizard-item${produtoSelecionado?.idProduto === p.idProduto ? " selecionado" : ""}"
+             onclick="selecionarProdutoInserir(${p.idProduto})">
+            <i class="bi bi-check-circle-fill wizard-item-check"></i>
+            <div class="wizard-item-info">
+                <div class="wizard-item-nome">${p.nome}</div>
+                <div class="wizard-item-sub">SKU: ${p.sku ?? "—"}</div>
+            </div>
+        </div>`).join("");
+}
+
+function selecionarProdutoInserir(id) {
+    produtoSelecionado = produtosBase.find(p => p.idProduto === id);
+    renderizarListaProdutos(document.getElementById("ins-busca-produto").value);
+}
+
+function renderizarListaFornecedores(termo, containerId = "ins-lista-fornecedores", selecionado = null) {
+    const lista_el = document.getElementById(containerId);
+    const filtrados = fornecedores.filter(f =>
+        !termo || (f.nomeFantasia ?? "").toLowerCase().includes(termo.toLowerCase()) ||
+        (f.cnpj ?? "").includes(termo)
+    );
+    if (!filtrados.length) {
+        lista_el.innerHTML = `<div class="wizard-vazio"><i class="bi bi-building"></i>Nenhum fornecedor encontrado.</div>`;
+        return;
+    }
+    const prefixo = containerId === "cfg-lista-fornecedores" ? "cfg" : "ins";
+    lista_el.innerHTML = filtrados.map(f => `
+        <div class="wizard-item${selecionado?.idFornecedor === f.idFornecedor ? " selecionado" : ""}"
+             onclick="selecionarFornecedor(${f.idFornecedor}, '${prefixo}')">
+            <i class="bi bi-check-circle-fill wizard-item-check"></i>
+            <div class="wizard-item-info">
+                <div class="wizard-item-nome">${f.nomeFantasia}</div>
+                <div class="wizard-item-sub">CNPJ: ${f.cnpj ?? "—"}</div>
+            </div>
+        </div>`).join("");
+}
+
+function selecionarFornecedor(id, prefixo = "ins") {
+    const forn = fornecedores.find(f => f.idFornecedor === id);
+    if (prefixo === "ins") {
+        fornecedorSelecionado = forn;
+        document.getElementById("ins-painel-preco").style.display = forn ? "" : "none";
+        renderizarListaFornecedores(document.getElementById("ins-busca-fornecedor").value, "ins-lista-fornecedores", fornecedorSelecionado);
+    } else {
+        cfgFornecedorSelecionado = forn;
+        document.getElementById("cfg-painel-preco").style.display = forn ? "" : "none";
+        renderizarListaFornecedores(document.getElementById("cfg-busca-fornecedor").value, "cfg-lista-fornecedores", cfgFornecedorSelecionado);
+    }
+}
+
+function preencherResumoInserir() {
+    document.getElementById("ins-resumo-produto").textContent = produtoSelecionado?.nome ?? "—";
+    document.getElementById("ins-resumo-sku").textContent = produtoSelecionado?.sku ?? "—";
+    document.getElementById("ins-resumo-qtd").textContent = document.getElementById("ins-qtd").value || "0";
+    document.getElementById("ins-resumo-min").textContent = document.getElementById("ins-min").value || "0";
+    document.getElementById("ins-resumo-max").textContent = document.getElementById("ins-max").value || "0";
+    document.getElementById("ins-resumo-local").textContent = document.getElementById("ins-local").value || "—";
+    const blocoForn = document.getElementById("ins-resumo-bloco-forn");
+    if (fornecedorSelecionado) {
+        blocoForn.style.display = "";
+        document.getElementById("ins-resumo-fornecedor").textContent = fornecedorSelecionado.nomeFantasia;
+        document.getElementById("ins-resumo-preco-compra").textContent =
+            `R$ ${parseFloat(document.getElementById("ins-preco-compra").value || 0).toFixed(2)}`;
+    } else {
+        blocoForn.style.display = "none";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("btn-filtro-todos").classList.add("sel-todos");
+    carregarEstoque();
+
+    // Busca produto no wizard
+    document.getElementById("ins-busca-produto")?.addEventListener("input", function () {
+        renderizarListaProdutos(this.value);
+    });
+
+    // Busca fornecedor no wizard de inserção
+    document.getElementById("ins-busca-fornecedor")?.addEventListener("input", function () {
+        renderizarListaFornecedores(this.value, "ins-lista-fornecedores", fornecedorSelecionado);
+    });
+
+    // Busca fornecedor no modal de configuração
+    document.getElementById("cfg-busca-fornecedor")?.addEventListener("input", function () {
+        renderizarListaFornecedores(this.value, "cfg-lista-fornecedores", cfgFornecedorSelecionado);
+    });
+
+    // Botão próximo no wizard de inserção
+    document.getElementById("ins-btn-proximo")?.addEventListener("click", () => {
+        const err = document.getElementById("mensagemErro");
+        err.style.display = "none";
+        if (etapaInserir === 1 && !produtoSelecionado) {
+            err.textContent = "Selecione um produto antes de continuar.";
+            err.style.display = "";
+            return;
+        }
+        if (etapaInserir === 2) {
+            const qtd = parseInt(document.getElementById("ins-qtd").value);
+            if (isNaN(qtd) || qtd < 0) {
+                err.textContent = "Informe uma quantidade válida.";
+                err.style.display = "";
+                return;
+            }
+        }
+        irParaEtapaInserir(etapaInserir + 1);
+    });
+
+    // Botão voltar no wizard de inserção
+    document.getElementById("ins-btn-voltar")?.addEventListener("click", () => {
+        irParaEtapaInserir(etapaInserir - 1);
+    });
+
+    // Botão salvar no wizard
+    document.getElementById("ins-btn-salvar")?.addEventListener("click", salvarInsercao);
+
+    // Fechar modais ao clicar fora
+    ["modal-inserir", "modal-movimentacao", "modal-configuracao"].forEach(id => {
+        document.getElementById(id)?.addEventListener("click", function (e) {
+            if (e.target === this) {
+                if (id === "modal-inserir") fecharModalInserir();
+                else if (id === "modal-movimentacao") fecharModalMovimentacao();
+                else fecharModalConfiguracao();
+            }
+        });
+    });
+});
+
+async function salvarInsercao() {
+    if (!produtoSelecionado) return;
+    const btn = document.getElementById("ins-btn-salvar");
+    btn.disabled = true;
+    try {
+        // Movimentação de entrada para ajustar quantidade inicial
+        const qtd = parseInt(document.getElementById("ins-qtd").value) || 0;
+        if (qtd > 0) {
+            await apiPost("/Estoque/Movimentar", {
+                IdProduto: produtoSelecionado.idProduto,
+                TipoMovimentacao: "ENTRADA",
+                Quantidade: qtd,
+                Motivo: "Inserção inicial no estoque"
+            });
+        }
+        // Configurar min/max/local
+        await apiPost("/Estoque/AtualizarConfiguracao", {
+            IdProduto: produtoSelecionado.idProduto,
+            EstoqueMinimo: parseInt(document.getElementById("ins-min").value) || 0,
+            EstoqueMaximo: parseInt(document.getElementById("ins-max").value) || 0,
+            Local: document.getElementById("ins-local").value || null
+        });
+        // Associar fornecedor se selecionado
+        if (fornecedorSelecionado) {
+            await apiPost("/Estoque/AssociarFornecedor", {
+                IdFornecedor: fornecedorSelecionado.idFornecedor,
+                IdProduto: produtoSelecionado.idProduto,
+                PrecoCompra: parseFloat(document.getElementById("ins-preco-compra").value) || 0
+            });
+        }
+        fecharModalInserir();
+        flexToast("Produto inserido no estoque!", "sucesso");
+        await carregarEstoque();
+    } catch (err) {
+        flexToast("Erro ao inserir: " + err.message, "erro");
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ── Modal: Movimentação ────────────────────────────────────────────────────
+
+function abrirModalMovimentacao(idProduto, nome) {
+    document.getElementById("mov-idProduto").value = idProduto;
+    document.getElementById("mov-produto-nome").textContent = nome;
+    document.getElementById("mov-tipo").value = "ENTRADA";
+    document.getElementById("mov-quantidade").value = "";
+    document.getElementById("mov-motivo").value = "";
+    document.getElementById("modal-movimentacao").classList.add("open");
+}
+
+function fecharModalMovimentacao() {
+    document.getElementById("modal-movimentacao").classList.remove("open");
+}
+
+async function salvarMovimentacao() {
+    const idProduto = parseInt(document.getElementById("mov-idProduto").value);
+    const qtd = parseInt(document.getElementById("mov-quantidade").value);
+    if (!qtd || qtd <= 0) { flexToast("Informe uma quantidade válida.", "aviso"); return; }
+    try {
+        await apiPost("/Estoque/Movimentar", {
+            IdProduto: idProduto,
+            TipoMovimentacao: document.getElementById("mov-tipo").value,
+            Quantidade: qtd,
+            Motivo: document.getElementById("mov-motivo").value || null
+        });
+        fecharModalMovimentacao();
+        flexToast("Movimentação registrada!", "sucesso");
+        await carregarEstoque();
+    } catch (err) {
+        flexToast("Erro: " + err.message, "erro");
+    }
+}
+
+// ── Modal: Configuração de Estoque ────────────────────────────────────────
+
+function abrirModalConfiguracao(idProduto, nome, min, max, local) {
+    cfgEtapa = 1;
+    cfgFornecedorSelecionado = null;
+    document.getElementById("cfg-idProduto").value = idProduto;
+    document.getElementById("cfg-produto-nome").textContent = nome;
+    document.getElementById("cfg-min").value = min ?? "";
+    document.getElementById("cfg-max").value = max ?? "";
+    document.getElementById("cfg-local").value = local ?? "";
+    document.getElementById("cfg-busca-fornecedor").value = "";
+    document.getElementById("cfg-painel-preco").style.display = "none";
+    irParaEtapaCfg(1);
+    carregarFornecedores().then(() =>
+        renderizarListaFornecedores("", "cfg-lista-fornecedores", null)
+    );
+    document.getElementById("modal-configuracao").classList.add("open");
+}
+
+function fecharModalConfiguracao() {
+    document.getElementById("modal-configuracao").classList.remove("open");
+}
+
+function irParaEtapaCfg(etapa) {
+    cfgEtapa = etapa;
+    document.getElementById("cfg-etapa-1")?.classList.toggle("ativa", etapa === 1);
+    document.getElementById("cfg-etapa-2")?.classList.toggle("ativa", etapa === 2);
+    document.getElementById("cfg-step-1")?.classList.toggle("active", etapa === 1);
+    document.getElementById("cfg-step-2")?.classList.toggle("active", etapa === 2);
+    document.getElementById("cfg-btn-voltar").style.display = etapa > 1 ? "" : "none";
+    document.getElementById("cfg-btn-proximo").style.display = etapa < CFG_TOTAL_ETAPAS ? "" : "none";
+    document.getElementById("cfg-btn-salvar").style.display = etapa === CFG_TOTAL_ETAPAS ? "" : "none";
+}
+
+function cfgProximaEtapa() { irParaEtapaCfg(cfgEtapa + 1); }
+function cfgVoltarEtapa() { irParaEtapaCfg(cfgEtapa - 1); }
+
+async function salvarConfiguracao() {
+    const idProduto = parseInt(document.getElementById("cfg-idProduto").value);
+    try {
+        await apiPost("/Estoque/AtualizarConfiguracao", {
+            IdProduto: idProduto,
+            EstoqueMinimo: parseInt(document.getElementById("cfg-min").value) || 0,
+            EstoqueMaximo: parseInt(document.getElementById("cfg-max").value) || 0,
+            Local: document.getElementById("cfg-local").value || null
+        });
+        if (cfgFornecedorSelecionado) {
+            await apiPost("/Estoque/AssociarFornecedor", {
+                IdFornecedor: cfgFornecedorSelecionado.idFornecedor,
+                IdProduto: idProduto,
+                PrecoCompra: parseFloat(document.getElementById("cfg-preco-compra").value) || 0
+            });
+        }
+        fecharModalConfiguracao();
+        flexToast("Configuração salva!", "sucesso");
+        await carregarEstoque();
+    } catch (err) {
+        flexToast("Erro: " + err.message, "erro");
+    }
+}

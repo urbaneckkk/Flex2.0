@@ -296,3 +296,144 @@ function setBotaoCarregando(btnEl, carregando) {
         btnEl.innerHTML = btnEl.dataset.textoOriginal;
     }
 }
+
+// ── Modais ────────────────────────────────
+function abrirModal() {
+    document.getElementById("form-usuario").reset();
+    document.getElementById("novo-perfil").innerHTML = '<option value="">Carregando...</option>';
+    carregarCargos("novo-perfil");
+    document.getElementById("modal-novo-usuario").classList.add("open");
+}
+
+function fecharModal() {
+    document.getElementById("modal-novo-usuario").classList.remove("open");
+}
+
+function abrirModalEdicao(id) {
+    usuarioEmEdicao = todoUsuarios.find(u => u.idUsuario === id);
+    if (!usuarioEmEdicao) return;
+
+    const u = usuarioEmEdicao;
+    document.getElementById("edit-nome").value = u.nome ?? "";
+    document.getElementById("edit-login").value = u.login ?? "";
+    document.getElementById("edit-cpf").value = formatarCPF(u.cpf);
+    document.getElementById("edit-email").value = u.email ?? "";
+    document.getElementById("edit-telefone").value = formatarTelefone(u.telefone);
+    document.getElementById("edit-senha").value = "";
+    document.getElementById("edit-criacao").value = u.dthCriacao
+        ? new Date(u.dthCriacao).toLocaleDateString("pt-BR") : "";
+
+    carregarCargos("edit-perfil").then(() => {
+        document.getElementById("edit-perfil").value = u.cargo_id ?? "";
+    });
+
+    document.getElementById("modal-edicao").classList.add("open");
+}
+
+function fecharModalEdicao() {
+    document.getElementById("modal-edicao").classList.remove("open");
+    usuarioEmEdicao = null;
+}
+
+function confirmarAlterarStatus(id) {
+    usuarioParaAlterarStatus = todoUsuarios.find(u => u.idUsuario === id);
+    if (!usuarioParaAlterarStatus) return;
+
+    const acao = usuarioParaAlterarStatus.fAtivo ? "inativar" : "reativar";
+    document.getElementById("confirm-mensagem").innerHTML =
+        `Deseja <strong>${acao}</strong> o usuário <strong>${usuarioParaAlterarStatus.nome}</strong>?`;
+    document.getElementById("confirm-btn-sim").textContent = `Sim, ${acao}`;
+    document.getElementById("modal-confirmar").classList.add("open");
+}
+
+function fecharModalConfirmar() {
+    document.getElementById("modal-confirmar").classList.remove("open");
+    usuarioParaAlterarStatus = null;
+}
+
+// ── Submits ───────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+    carregarUsuarios();
+    document.getElementById("btn-filtro-todos").classList.add("ativo-sel");
+
+    document.getElementById("input-termo-busca")
+        ?.addEventListener("input", filtrarTabela);
+    document.getElementById("select-tipo-filtro")
+        ?.addEventListener("change", filtrarTabela);
+
+    // Fechar modais ao clicar fora
+    ["modal-novo-usuario", "modal-edicao", "modal-confirmar"].forEach(id => {
+        document.getElementById(id)?.addEventListener("click", function (e) {
+            if (e.target === this) {
+                if (id === "modal-novo-usuario") fecharModal();
+                else if (id === "modal-edicao") fecharModalEdicao();
+                else fecharModalConfirmar();
+            }
+        });
+    });
+
+    // Submit novo usuário
+    document.getElementById("form-usuario")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const btn = this.querySelector('[type="submit"]');
+        setBotaoCarregando(btn, true);
+        try {
+            await apiPost("/Usuario/Criar", {
+                Nome: document.getElementById("novo-nome").value.trim(),
+                Login: document.getElementById("novo-login").value.trim(),
+                Senha: document.getElementById("novo-senha").value,
+                CPF: document.getElementById("novo-cpf").value.replace(/\D/g, ""),
+                Email: document.getElementById("novo-email").value.trim() || null,
+                Telefone: document.getElementById("novo-telefone").value.replace(/\D/g, "") || null,
+                cargo_id: parseInt(document.getElementById("novo-perfil").value)
+            });
+            fecharModal();
+            flexToast("Usuário criado com sucesso!", "sucesso");
+            await carregarUsuarios();
+        } catch (err) {
+            flexToast(err.message, "erro");
+        } finally {
+            setBotaoCarregando(btn, false);
+        }
+    });
+
+    // Submit edição
+    document.getElementById("form-edicao")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        if (!usuarioEmEdicao) return;
+        const btn = this.querySelector('[type="submit"]');
+        setBotaoCarregando(btn, true);
+        try {
+            await apiPost("/Usuario/Editar", {
+                IdUsuario: usuarioEmEdicao.idUsuario,
+                Nome: document.getElementById("edit-nome").value.trim(),
+                Login: document.getElementById("edit-login").value.trim(),
+                Senha: document.getElementById("edit-senha").value || null,
+                CPF: document.getElementById("edit-cpf").value.replace(/\D/g, ""),
+                Email: document.getElementById("edit-email").value.trim() || null,
+                Telefone: document.getElementById("edit-telefone").value.replace(/\D/g, "") || null,
+                cargo_id: parseInt(document.getElementById("edit-perfil").value)
+            });
+            fecharModalEdicao();
+            flexToast("Usuário atualizado!", "sucesso");
+            await carregarUsuarios();
+        } catch (err) {
+            flexToast(err.message, "erro");
+        } finally {
+            setBotaoCarregando(btn, false);
+        }
+    });
+
+    // Confirmar alterar status
+    document.getElementById("confirm-btn-sim")?.addEventListener("click", async function () {
+        if (!usuarioParaAlterarStatus) return;
+        try {
+            await apiPostForm("/Usuario/AlterarStatus", { id: usuarioParaAlterarStatus.idUsuario });
+            fecharModalConfirmar();
+            flexToast("Status alterado!", "sucesso");
+            await carregarUsuarios();
+        } catch (err) {
+            flexToast(err.message, "erro");
+        }
+    });
+});

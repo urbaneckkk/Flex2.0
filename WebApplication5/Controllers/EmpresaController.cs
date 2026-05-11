@@ -48,24 +48,24 @@ public class EmpresaController : BaseController
     }
 
     // ── Buscar configuração fiscal ──
-    public IActionResult BuscarFiscal()
-    {
-        var r = VerificarSessaoApi(); if (r != null) return r;
-        var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
-        var config = _service.BuscarConfigFiscal(idEmpresa);
-        return Json(config);
-    }
+    //public IActionResult BuscarFiscal()
+    //{
+    //    var r = VerificarSessaoApi(); if (r != null) return r;
+    //    var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
+    //    var config = _service.BuscarConfigFiscal(idEmpresa);
+    //    return Json(config);
+    //}
 
-    // ── Salvar configuração fiscal (sem certificado) ──
-    [HttpPost]
-    public IActionResult SalvarFiscal([FromBody] SalvarConfigFiscalDto dto)
-    {
-        var r = VerificarSessaoApi(); if (r != null) return r;
-        var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
-        _service.SalvarConfigFiscal(idEmpresa, dto);
-        Auditar("EMPRESA", "SALVAR_FISCAL", $"Config fiscal da empresa #{idEmpresa} atualizada");
-        return Ok(new { mensagem = "Configuração fiscal salva com sucesso." });
-    }
+    //// ── Salvar configuração fiscal (sem certificado) ──
+    //[HttpPost]
+    //public IActionResult SalvarFiscal([FromBody] SalvarConfigFiscalDto dto)
+    //{
+    //    var r = VerificarSessaoApi(); if (r != null) return r;
+    //    var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
+    //    _service.SalvarConfigFiscal(idEmpresa, dto);
+    //    Auditar("EMPRESA", "SALVAR_FISCAL", $"Config fiscal da empresa #{idEmpresa} atualizada");
+    //    return Ok(new { mensagem = "Configuração fiscal salva com sucesso." });
+    //}
 
     // ── Upload do certificado A1 ──
     [HttpPost]

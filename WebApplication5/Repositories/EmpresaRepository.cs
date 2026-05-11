@@ -68,38 +68,38 @@ namespace WebApplication5.Repositories
                 commandType: CommandType.StoredProcedure);
         }
 
-        public EmpresaConfigFiscalModel? BuscarConfigFiscal(int idEmpresa)
-        {
-            using var conn = new MySqlConnection(_connectionString);
-            return conn.QueryFirstOrDefault<EmpresaConfigFiscalModel>(
-                "sp_BuscarConfigFiscal",
-                new { p_idEmpresa = idEmpresa },
-                commandType: CommandType.StoredProcedure);
-        }
+        //public EmpresaConfigFiscalModel? BuscarConfigFiscal(int idEmpresa)
+        //{
+        //    using var conn = new MySqlConnection(_connectionString);
+        //    return conn.QueryFirstOrDefault<EmpresaConfigFiscalModel>(
+        //        "sp_BuscarConfigFiscal",
+        //        new { p_idEmpresa = idEmpresa },
+        //        commandType: CommandType.StoredProcedure);
+        //}
 
-        public void SalvarConfigFiscal(int idEmpresa, SalvarConfigFiscalDto dto)
-        {
-            using var conn = new MySqlConnection(_connectionString);
-            conn.Execute(
-                "sp_SalvarConfigFiscal",
-                new
-                {
-                    p_idEmpresa = idEmpresa,
-                    p_cnpjFiscal = dto.CnpjFiscal,
-                    p_inscricaoEstadual = dto.InscricaoEstadual,
-                    p_inscricaoMunicipal = dto.InscricaoMunicipal,
-                    p_regimeTributario = dto.RegimeTributario,
-                    p_ambiente = dto.Ambiente,
-                    p_serieNFe = dto.SerieNFe,
-                    p_serieNFCe = dto.SerieNFCe,
-                    p_proximoNumNFe = dto.ProximoNumNFe,
-                    p_proximoNumNFCe = dto.ProximoNumNFCe,
-                    p_aliqPadraoICMS = dto.AliqPadraoICMS,
-                    p_aliqPadraoPIS = dto.AliqPadraoPIS,
-                    p_aliqPadraoCOFINS = dto.AliqPadraoCOFINS
-                },
-                commandType: CommandType.StoredProcedure);
-        }
+        //public void SalvarConfigFiscal(int idEmpresa, SalvarConfigFiscalDto dto)
+        //{
+        //    using var conn = new MySqlConnection(_connectionString);
+        //    conn.Execute(
+        //        "sp_SalvarConfigFiscal",
+        //        new
+        //        {
+        //            p_idEmpresa = idEmpresa,
+        //            p_cnpjFiscal = dto.CnpjFiscal,
+        //            p_inscricaoEstadual = dto.InscricaoEstadual,
+        //            p_inscricaoMunicipal = dto.InscricaoMunicipal,
+        //            p_regimeTributario = dto.RegimeTributario,
+        //            p_ambiente = dto.Ambiente,
+        //            p_serieNFe = dto.SerieNFe,
+        //            p_serieNFCe = dto.SerieNFCe,
+        //            p_proximoNumNFe = dto.ProximoNumNFe,
+        //            p_proximoNumNFCe = dto.ProximoNumNFCe,
+        //            p_aliqPadraoICMS = dto.AliqPadraoICMS,
+        //            p_aliqPadraoPIS = dto.AliqPadraoPIS,
+        //            p_aliqPadraoCOFINS = dto.AliqPadraoCOFINS
+        //        },
+        //        commandType: CommandType.StoredProcedure);
+        //}
 
         public void SalvarCertificado(int idEmpresa, byte[] certificadoBytes,
             string senha, DateTime? dthVencimento)

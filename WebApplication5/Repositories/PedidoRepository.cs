@@ -58,7 +58,7 @@ namespace WebApplication5.Repositories
                     p_cliente_id = pedido.IdCliente,
                     p_usuario_id = pedido.IdUsuario,
                     p_idEmpresa = pedido.IdEmpresa,
-                    p_endereco_id = pedido.EnderecoId,
+                    p_endereco_id = pedido.EnderecoId > 0 ? pedido.EnderecoId : (int?)null,
                     p_canal = pedido.Canal ?? "PROPRIO",
                     p_numeroExterno = pedido.NumeroExterno,
                     p_statusPedido_id = pedido.StatusPedidoId,

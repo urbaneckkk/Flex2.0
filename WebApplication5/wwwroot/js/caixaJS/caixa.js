@@ -234,12 +234,541 @@ function renderizarBreakdownData(data) {
 }
 
 // ── Abas ─────────────────────────────────
+// ── Abas ─────────────────────────────────────────────────────────────────
 function mudarAba(aba) {
-    abaAtiva = aba;
-    ["lancamentos", "contas", "historico"].forEach(a => {
-        document.getElementById(`conteudo-${a}`)?.style && (document.getElementById(`conteudo-${a}`).style.display = a === aba ? "" : "none");
-        document.getElementById(`aba-${a}`)?.classList.toggle("ativa", a === aba);
+    document.querySelectorAll(".fin-aba-btn").forEach(b => b.classList.remove("ativa"));
+    document.getElementById(`aba-btn-${aba}`)?.classList.add("ativa");
+    document.getElementById("painel-receber").style.display = aba === "receber" ? "" : "none";
+    document.getElementById("painel-pagar").style.display = aba === "pagar" ? "" : "none";
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────
+function setFiltroReceber(valor) {
+    filtroReceber = valor;
+    document.querySelectorAll("[id^='fr-']").forEach(b =>
+        b.classList.remove("sel-todos", "sel-aberto", "sel-vencido", "sel-pago"));
+    document.getElementById(`fr-${valor}`)?.classList.add(`sel-${valor}`);
+    pagReceberAtual = 1;
+    aplicarFiltroReceber();
+}
+
+function setFiltroPagar(valor) {
+    filtroPagar = valor;
+    document.querySelectorAll("[id^='fp-']").forEach(b =>
+        b.classList.remove("sel-todos", "sel-aberto", "sel-vencido", "sel-pago"));
+    document.getElementById(`fp-${valor}`)?.classList.add(`sel-${valor}`);
+    pagPagarAtual = 1;
+    aplicarFiltroPagar();
+}
+
+function aplicarFiltroReceber() {
+    const termo = filtroReceberTexto.toLowerCase();
+    contasReceberFiltradas = contasReceber.filter(c => {
+        if (filtroReceber !== "todos" && (c.statusAtual ?? "ABERTO").toUpperCase() !== filtroReceber.toUpperCase()) return false;
+        if (termo && !(c.nomeCliente ?? "").toLowerCase().includes(termo) && !(c.descricao ?? "").toLowerCase().includes(termo)) return false;
+        if (filtroVencimentoInicioR && new Date(c.dthVencimento) < new Date(filtroVencimentoInicioR)) return false;
+        if (filtroVencimentoFimR && new Date(c.dthVencimento) > new Date(filtroVencimentoFimR + "T23:59:59")) return false;
+        return true;
     });
+    contasReceberFiltradas = ordenar(contasReceberFiltradas, ordemReceber);
+    renderizarTabelaReceber();
+}
+
+function aplicarFiltroPagar() {
+    const termo = filtroPagarTexto.toLowerCase();
+    contasPagarFiltradas = contasPagar.filter(c => {
+        if (filtroPagar !== "todos" && (c.statusAtual ?? "ABERTO").toUpperCase() !== filtroPagar.toUpperCase()) return false;
+        if (termo && !(c.nomeFornecedor ?? "").toLowerCase().includes(termo) && !(c.descricao ?? "").toLowerCase().includes(termo)) return false;
+        if (filtroVencimentoInicioP && new Date(c.dthVencimento) < new Date(filtroVencimentoInicioP)) return false;
+        if (filtroVencimentoFimP && new Date(c.dthVencimento) > new Date(filtroVencimentoFimP + "T23:59:59")) return false;
+        return true;
+    });
+    contasPagarFiltradas = ordenar(contasPagarFiltradas, ordemPagar);
+    renderizarTabelaPagar();
+}
+
+function filtrarReceber() {
+    filtroReceberTexto = document.getElementById("fr-busca")?.value ?? "";
+    filtroVencimentoInicioR = document.getElementById("fr-venc-inicio")?.value ?? null;
+    filtroVencimentoFimR = document.getElementById("fr-venc-fim")?.value ?? null;
+    pagReceberAtual = 1;
+    aplicarFiltroReceber();
+}
+
+function filtrarPagar() {
+    filtroPagarTexto = document.getElementById("fp-busca")?.value ?? "";
+    filtroVencimentoInicioP = document.getElementById("fp-venc-inicio")?.value ?? null;
+    filtroVencimentoFimP = document.getElementById("fp-venc-fim")?.value ?? null;
+    pagPagarAtual = 1;
+    aplicarFiltroPagar();
+}
+
+// ── Renderizar tabelas ────────────────────────────────────────────────────
+function renderizarTabelaReceber() {
+    const tbody = document.getElementById("tbody-receber");
+    if (!tbody) return;
+    const total = contasReceberFiltradas.length;
+    const inicio = (pagReceberAtual - 1) * PAG_RECEBER;
+    const pagina = contasReceberFiltradas.slice(inicio, inicio + PAG_RECEBER);
+
+    if (!pagina.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma conta encontrada.</td></tr>`;
+        renderizarPaginacao("receber", 0);
+        return;
+    }
+
+    tbody.innerHTML = pagina.map(c => {
+        const restante = Math.max(0, c.valorTotal - c.valorPago);
+        const status = c.statusAtual ?? "ABERTO";
+        return `<tr>
+            <td class="area-acoes">
+                ${status !== "PAGO" ? `
+                <button class="btn-acao btn-pagar-icon" title="Receber" onclick="abrirModalReceberPagamento(${c.idContaReceber})">
+                    <i class="bi bi-currency-dollar"></i>
+                </button>` : ""}
+                <button class="btn-acao btn-calendar-icon" title="Editar" onclick="abrirModalEditarReceber(${c.idContaReceber})">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button class="btn-acao" title="Alterar vencimento" onclick="abrirModalVencReceber(${c.idContaReceber})">
+                    <i class="bi bi-calendar-event"></i>
+                </button>
+                <button class="btn-acao" title="Histórico" onclick="abrirHistorico('receber', ${c.idContaReceber})">
+                    <i class="bi bi-clock-history"></i>
+                </button>
+                <button class="btn-acao btn-inativar" title="Excluir" onclick="abrirModalExcluirReceber(${c.idContaReceber})">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+            </td>
+            <td><span class="status-pill ${getPillClass(status)}">${getPillLabel(status)}</span></td>
+            <td>${c.nomeCliente ?? "—"}</td>
+            <td>${c.descricao ?? "—"}</td>
+            <td>${fmtData(c.dthVencimento)}</td>
+            <td>${fmt(c.valorTotal)}</td>
+            <td>${fmt(c.valorPago)}</td>
+            <td class="${restante > 0 ? 'valor-negativo' : ''}">${fmt(restante)}</td>
+        </tr>`;
+    }).join("");
+
+    renderizarPaginacao("receber", total);
+    atualizarBadgeAba("receber");
+}
+
+function renderizarTabelaPagar() {
+    const tbody = document.getElementById("tbody-pagar");
+    if (!tbody) return;
+    const total = contasPagarFiltradas.length;
+    const inicio = (pagPagarAtual - 1) * PAG_PAGAR;
+    const pagina = contasPagarFiltradas.slice(inicio, inicio + PAG_PAGAR);
+
+    if (!pagina.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma conta encontrada.</td></tr>`;
+        renderizarPaginacao("pagar", 0);
+        return;
+    }
+
+    tbody.innerHTML = pagina.map(c => {
+        const restante = Math.max(0, c.valorTotal - c.valorPago);
+        const status = c.statusAtual ?? "ABERTO";
+        return `<tr>
+            <td class="area-acoes">
+                ${status !== "PAGO" ? `
+                <button class="btn-acao btn-pagar-icon" title="Pagar" onclick="abrirModalPagarConta(${c.idContaPagar})">
+                    <i class="bi bi-currency-dollar"></i>
+                </button>` : ""}
+                <button class="btn-acao btn-calendar-icon" title="Editar" onclick="abrirModalEditarPagar(${c.idContaPagar})">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button class="btn-acao" title="Alterar vencimento" onclick="abrirModalVencPagar(${c.idContaPagar})">
+                    <i class="bi bi-calendar-event"></i>
+                </button>
+                <button class="btn-acao" title="Histórico" onclick="abrirHistorico('pagar', ${c.idContaPagar})">
+                    <i class="bi bi-clock-history"></i>
+                </button>
+                <button class="btn-acao btn-inativar" title="Excluir" onclick="abrirModalExcluirPagar(${c.idContaPagar})">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+            </td>
+            <td><span class="status-pill ${getPillClass(status)}">${getPillLabel(status)}</span></td>
+            <td>${c.nomeFornecedor ?? "—"}</td>
+            <td>${c.descricao ?? "—"}</td>
+            <td>${fmtData(c.dthVencimento)}</td>
+            <td>${fmt(c.valorTotal)}</td>
+            <td>${fmt(c.valorPago)}</td>
+            <td class="${restante > 0 ? 'valor-negativo' : ''}">${fmt(restante)}</td>
+        </tr>`;
+    }).join("");
+
+    renderizarPaginacao("pagar", total);
+    atualizarBadgeAba("pagar");
+}
+
+function atualizarBadgeAba(aba) {
+    const lista = aba === "receber" ? contasReceber : contasPagar;
+    const vencidas = lista.filter(c => c.statusAtual === "VENCIDO").length;
+    const badge = document.getElementById(`badge-${aba}`);
+    if (!badge) return;
+    badge.textContent = vencidas;
+    badge.classList.toggle("visivel", vencidas > 0);
+}
+
+function renderizarPaginacao(tipo, total) {
+    const PAG = tipo === "receber" ? PAG_RECEBER : PAG_PAGAR;
+    const pag = tipo === "receber" ? pagReceberAtual : pagPagarAtual;
+    const totalPags = Math.ceil(total / PAG);
+    const ini = total === 0 ? 0 : (pag - 1) * PAG + 1;
+    const fim = Math.min(pag * PAG, total);
+
+    document.getElementById(`pag-info-${tipo}`)?.setAttribute("data-text",
+        total === 0 ? "Nenhum registro" : `Mostrando ${ini}–${fim} de ${total}`);
+
+    const infoEl = document.getElementById(`pag-info-${tipo}`);
+    if (infoEl) infoEl.textContent = total === 0 ? "Nenhum registro" : `Mostrando ${ini}–${fim} de ${total}`;
+
+    const ctrl = document.getElementById(`pag-ctrl-${tipo}`);
+    if (!ctrl) return;
+    ctrl.innerHTML = "";
+
+    const prev = document.createElement("button");
+    prev.className = "btn-pagina"; prev.textContent = "‹"; prev.disabled = pag === 1;
+    prev.onclick = () => { if (tipo === "receber") pagReceberAtual--; else pagPagarAtual--; aplicarFiltro(tipo); };
+    ctrl.appendChild(prev);
+
+    for (let i = 1; i <= totalPags; i++) {
+        const btn = document.createElement("button");
+        btn.className = `btn-pagina${i === pag ? " ativo" : ""}`;
+        btn.textContent = i;
+        btn.onclick = () => { if (tipo === "receber") pagReceberAtual = i; else pagPagarAtual = i; aplicarFiltro(tipo); };
+        ctrl.appendChild(btn);
+    }
+
+    const next = document.createElement("button");
+    next.className = "btn-pagina"; next.textContent = "›"; next.disabled = pag >= totalPags;
+    next.onclick = () => { if (tipo === "receber") pagReceberAtual++; else pagPagarAtual++; aplicarFiltro(tipo); };
+    ctrl.appendChild(next);
+}
+
+function aplicarFiltro(tipo) {
+    tipo === "receber" ? aplicarFiltroReceber() : aplicarFiltroPagar();
+}
+
+// ── Helpers de modal ──────────────────────────────────────────────────────
+function abrirModal(id) { document.getElementById(id)?.classList.add("open"); }
+function fecharModal(id) { document.getElementById(id)?.classList.remove("open"); }
+
+function popularSelectFP(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = formasPagamento.map(f =>
+        `<option value="${f.idFormaPagamento}">${f.nome}</option>`).join("");
+}
+
+function popularSelectCat(id, tipo) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const filtradas = tipo ? categorias.filter(c => c.Tipo === tipo || c.tipo === tipo) : categorias;
+    sel.innerHTML = filtradas.map(c =>
+        `<option value="${c.idCategoriaFinanceira}">${c.nome}</option>`).join("");
+}
+
+function popularSelectClientes(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = `<option value="">Selecione...</option>` +
+        clientes.map(c => `<option value="${c.idCliente}">${c.nome}</option>`).join("");
+}
+
+function popularSelectFornecedores(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = `<option value="">Selecione...</option>` +
+        fornecedores.map(f => `<option value="${f.idFornecedor}">${f.nomeFantasia}</option>`).join("");
+}
+
+function popularSelects() {
+    popularSelectFP("nova-receber-fp");
+    popularSelectCat("nova-receber-cat", 1);
+    popularSelectClientes("nova-receber-cliente");
+    popularSelectFP("receber-pag-fp");
+    popularSelectCat("receber-pag-cat", 1);
+}
+
+function popularSelectsEdicao() {
+    popularSelectFP("nova-pagar-fp");
+    popularSelectCat("nova-pagar-cat", 2);
+    popularSelectFornecedores("nova-pagar-fornecedor");
+    popularSelectFP("pagar-conta-fp");
+    popularSelectCat("pagar-conta-cat", 2);
+}
+
+// ── Modal: Nova Conta a Receber ───────────────────────────────────────────
+function abrirModalNovaReceber() {
+    document.getElementById("nova-receber-form")?.reset();
+    abrirModal("modal-nova-receber");
+}
+function fecharModalNovaReceber() { fecharModal("modal-nova-receber"); }
+
+async function salvarNovaReceber() {
+    const clienteId = parseInt(document.getElementById("nova-receber-cliente")?.value);
+    const valorTotal = parseFloat(document.getElementById("nova-receber-valor")?.value);
+    const dthVencimento = document.getElementById("nova-receber-venc")?.value;
+    const descricao = document.getElementById("nova-receber-desc")?.value || null;
+    if (!clienteId || !valorTotal || !dthVencimento) { flexToast("Preencha todos os campos obrigatórios.", "aviso"); return; }
+    try {
+        await apiPost("/Financeiro/CriarContaReceber", { ClienteId: clienteId, ValorTotal: valorTotal, DthVencimento: dthVencimento, Descricao: descricao });
+        fecharModalNovaReceber();
+        flexToast("Conta a receber criada!", "sucesso");
+        await recarregarReceber();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Receber Pagamento ──────────────────────────────────────────────
+let _contaReceberAtual = null;
+function abrirModalReceberPagamento(id) {
+    _contaReceberAtual = contasReceber.find(c => c.idContaReceber === id);
+    if (!_contaReceberAtual) return;
+    document.getElementById("receber-pag-cliente").textContent = _contaReceberAtual.nomeCliente ?? "—";
+    document.getElementById("receber-pag-restante").textContent = fmt(Math.max(0, _contaReceberAtual.valorTotal - _contaReceberAtual.valorPago));
+    document.getElementById("receber-pag-valor").value = "";
+    abrirModal("modal-receber-pagamento");
+}
+function fecharModalReceberPagamento() { fecharModal("modal-receber-pagamento"); }
+
+async function confirmarReceberPagamento() {
+    if (!_contaReceberAtual) return;
+    const valorPago = parseFloat(document.getElementById("receber-pag-valor")?.value);
+    const idFP = parseInt(document.getElementById("receber-pag-fp")?.value);
+    const idCat = parseInt(document.getElementById("receber-pag-cat")?.value);
+    if (!valorPago || valorPago <= 0) { flexToast("Informe o valor recebido.", "aviso"); return; }
+    try {
+        await apiPost("/Financeiro/ReceberConta", { IdContaReceber: _contaReceberAtual.idContaReceber, ValorPago: valorPago, IdFormaPagamento: idFP, IdCategoriaFinanceira: idCat });
+        fecharModalReceberPagamento();
+        flexToast("Pagamento registrado!", "sucesso");
+        await recarregarReceber();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Editar Conta a Receber ─────────────────────────────────────────
+function abrirModalEditarReceber(id) {
+    const c = contasReceber.find(x => x.idContaReceber === id);
+    if (!c) return;
+    document.getElementById("editar-receber-id").value = id;
+    document.getElementById("editar-receber-desc").value = c.descricao ?? "";
+    document.getElementById("editar-receber-valor").value = c.valorTotal;
+    document.getElementById("editar-receber-venc").value = c.dthVencimento?.substring(0, 10) ?? "";
+    document.getElementById("editar-receber-cliente").value = c.cliente_id ?? "";
+    abrirModal("modal-editar-receber");
+}
+function fecharModalEditarReceber() { fecharModal("modal-editar-receber"); }
+
+async function salvarEditarReceber() {
+    const id = parseInt(document.getElementById("editar-receber-id")?.value);
+    try {
+        await apiPost("/Financeiro/EditarContaReceber", {
+            IdContaReceber: id,
+            Descricao: document.getElementById("editar-receber-desc")?.value || null,
+            ValorTotal: parseFloat(document.getElementById("editar-receber-valor")?.value),
+            DthVencimento: document.getElementById("editar-receber-venc")?.value,
+            ClienteId: parseInt(document.getElementById("editar-receber-cliente")?.value)
+        });
+        fecharModalEditarReceber();
+        flexToast("Conta atualizada!", "sucesso");
+        await recarregarReceber();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Alterar Vencimento Receber ─────────────────────────────────────
+let _vencReceberAtual = null;
+function abrirModalVencReceber(id) {
+    _vencReceberAtual = id;
+    const c = contasReceber.find(x => x.idContaReceber === id);
+    if (c) document.getElementById("venc-receber-data").value = c.dthVencimento?.substring(0, 10) ?? "";
+    abrirModal("modal-venc-receber");
+}
+function fecharModalVencReceber() { fecharModal("modal-venc-receber"); }
+
+async function salvarVencReceber() {
+    const data = document.getElementById("venc-receber-data")?.value;
+    if (!data) { flexToast("Informe a data.", "aviso"); return; }
+    try {
+        await apiPost("/Financeiro/AlterarVencimentoReceber", { IdContaReceber: _vencReceberAtual, NovaData: data });
+        fecharModalVencReceber();
+        flexToast("Vencimento atualizado!", "sucesso");
+        await recarregarReceber();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Excluir Receber ────────────────────────────────────────────────
+let _excluirReceberAtual = null;
+function abrirModalExcluirReceber(id) {
+    _excluirReceberAtual = id;
+    abrirModal("modal-excluir-receber");
+}
+function fecharModalExcluirReceber() { fecharModal("modal-excluir-receber"); }
+
+async function confirmarExcluirReceber() {
+    try {
+        await apiPost("/Financeiro/ExcluirContaReceber", { Id: _excluirReceberAtual });
+        fecharModalExcluirReceber();
+        flexToast("Conta excluída!", "sucesso");
+        await recarregarReceber();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Nova Conta a Pagar ─────────────────────────────────────────────
+function abrirModalNovaPagar() {
+    document.getElementById("nova-pagar-form")?.reset();
+    abrirModal("modal-nova-pagar");
+}
+function fecharModalNovaPagar() { fecharModal("modal-nova-pagar"); }
+
+async function salvarNovaPagar() {
+    const valorTotal = parseFloat(document.getElementById("nova-pagar-valor")?.value);
+    const dthVencimento = document.getElementById("nova-pagar-venc")?.value;
+    const descricao = document.getElementById("nova-pagar-desc")?.value || null;
+    const fornecedorId = parseInt(document.getElementById("nova-pagar-fornecedor")?.value) || null;
+    if (!valorTotal || !dthVencimento) { flexToast("Preencha todos os campos obrigatórios.", "aviso"); return; }
+    try {
+        await apiPost("/Financeiro/CriarContaPagar", { FornecedorId: fornecedorId, ValorTotal: valorTotal, DthVencimento: dthVencimento, Descricao: descricao });
+        fecharModalNovaPagar();
+        flexToast("Conta a pagar criada!", "sucesso");
+        await recarregarPagar();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Pagar Conta ────────────────────────────────────────────────────
+let _contaPagarAtual = null;
+function abrirModalPagarConta(id) {
+    _contaPagarAtual = contasPagar.find(c => c.idContaPagar === id);
+    if (!_contaPagarAtual) return;
+    document.getElementById("pagar-conta-fornecedor").textContent = _contaPagarAtual.nomeFornecedor ?? "—";
+    document.getElementById("pagar-conta-restante").textContent = fmt(Math.max(0, _contaPagarAtual.valorTotal - _contaPagarAtual.valorPago));
+    document.getElementById("pagar-conta-valor").value = "";
+    abrirModal("modal-pagar-conta");
+}
+function fecharModalPagarConta() { fecharModal("modal-pagar-conta"); }
+
+async function confirmarPagarConta() {
+    if (!_contaPagarAtual) return;
+    const valorPago = parseFloat(document.getElementById("pagar-conta-valor")?.value);
+    const idFP = parseInt(document.getElementById("pagar-conta-fp")?.value);
+    const idCat = parseInt(document.getElementById("pagar-conta-cat")?.value);
+    if (!valorPago || valorPago <= 0) { flexToast("Informe o valor pago.", "aviso"); return; }
+    try {
+        await apiPost("/Financeiro/PagarConta", { IdContaPagar: _contaPagarAtual.idContaPagar, ValorPago: valorPago, IdFormaPagamento: idFP, IdCategoriaFinanceira: idCat });
+        fecharModalPagarConta();
+        flexToast("Pagamento registrado!", "sucesso");
+        await recarregarPagar();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Editar Conta a Pagar ───────────────────────────────────────────
+function abrirModalEditarPagar(id) {
+    const c = contasPagar.find(x => x.idContaPagar === id);
+    if (!c) return;
+    document.getElementById("editar-pagar-id").value = id;
+    document.getElementById("editar-pagar-desc").value = c.descricao ?? "";
+    document.getElementById("editar-pagar-valor").value = c.valorTotal;
+    document.getElementById("editar-pagar-venc").value = c.dthVencimento?.substring(0, 10) ?? "";
+    document.getElementById("editar-pagar-fornecedor").value = c.fornecedor_id ?? "";
+    abrirModal("modal-editar-pagar");
+}
+function fecharModalEditarPagar() { fecharModal("modal-editar-pagar"); }
+
+async function salvarEditarPagar() {
+    const id = parseInt(document.getElementById("editar-pagar-id")?.value);
+    try {
+        await apiPost("/Financeiro/EditarContaPagar", {
+            IdContaPagar: id,
+            Descricao: document.getElementById("editar-pagar-desc")?.value || null,
+            ValorTotal: parseFloat(document.getElementById("editar-pagar-valor")?.value),
+            DthVencimento: document.getElementById("editar-pagar-venc")?.value,
+            FornecedorId: parseInt(document.getElementById("editar-pagar-fornecedor")?.value) || null
+        });
+        fecharModalEditarPagar();
+        flexToast("Conta atualizada!", "sucesso");
+        await recarregarPagar();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Alterar Vencimento Pagar ──────────────────────────────────────
+let _vencPagarAtual = null;
+function abrirModalVencPagar(id) {
+    _vencPagarAtual = id;
+    const c = contasPagar.find(x => x.idContaPagar === id);
+    if (c) document.getElementById("venc-pagar-data").value = c.dthVencimento?.substring(0, 10) ?? "";
+    abrirModal("modal-venc-pagar");
+}
+function fecharModalVencPagar() { fecharModal("modal-venc-pagar"); }
+
+async function salvarVencPagar() {
+    const data = document.getElementById("venc-pagar-data")?.value;
+    if (!data) { flexToast("Informe a data.", "aviso"); return; }
+    try {
+        await apiPost("/Financeiro/AlterarVencimentoPagar", { IdContaPagar: _vencPagarAtual, NovaData: data });
+        fecharModalVencPagar();
+        flexToast("Vencimento atualizado!", "sucesso");
+        await recarregarPagar();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Excluir Pagar ──────────────────────────────────────────────────
+let _excluirPagarAtual = null;
+function abrirModalExcluirPagar(id) {
+    _excluirPagarAtual = id;
+    abrirModal("modal-excluir-pagar");
+}
+function fecharModalExcluirPagar() { fecharModal("modal-excluir-pagar"); }
+
+async function confirmarExcluirPagar() {
+    try {
+        await apiPost("/Financeiro/ExcluirContaPagar", { Id: _excluirPagarAtual });
+        fecharModalExcluirPagar();
+        flexToast("Conta excluída!", "sucesso");
+        await recarregarPagar();
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+
+// ── Modal: Histórico ──────────────────────────────────────────────────────
+async function abrirHistorico(tipo, id) {
+    const url = tipo === "receber"
+        ? `/Financeiro/HistoricoReceber?idContaReceber=${id}`
+        : `/Financeiro/HistoricoPagar?idContaPagar=${id}`;
+    try {
+        const lista = await apiGet(url);
+        const tbody = document.getElementById("tbody-historico");
+        if (tbody) {
+            tbody.innerHTML = lista.length
+                ? lista.map(h => `<tr>
+                    <td>${fmtData(h.dthPagamento)}</td>
+                    <td>${fmt(h.valorPago)}</td>
+                    <td>${h.observacao ?? "—"}</td>
+                  </tr>`).join("")
+                : `<tr><td colspan="3" class="empty-state">Nenhum registro.</td></tr>`;
+        }
+        abrirModal("modal-historico");
+    } catch (err) { flexToast(err.message, "erro"); }
+}
+function fecharHistorico() { fecharModal("modal-historico"); }
+
+// ── Exportar ──────────────────────────────────────────────────────────────
+function exportar(tipo, formato) {
+    const url = formato === "excel"
+        ? `/Financeiro/ExportarExcel?tipo=${tipo}`
+        : `/Financeiro/ExportarPdf?tipo=${tipo}`;
+    window.open(url, "_blank");
+}
+
+// ── Recarregar ────────────────────────────────────────────────────────────
+async function recarregarReceber() {
+    contasReceber = await apiGet("/Financeiro/ListarContasReceber").catch(() => []);
+    atualizarKPIs();
+    aplicarFiltroReceber();
+}
+
+async function recarregarPagar() {
+    contasPagar = await apiGet("/Financeiro/ListarContasPagar").catch(() => []);
+    atualizarKPIs();
+    aplicarFiltroPagar();
 }
 
 // ── Renderizar lançamentos ────────────────
