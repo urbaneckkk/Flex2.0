@@ -117,4 +117,3 @@ if "estoque" in modelos_para_treinar:
 
 print("\n✅ Treino concluído. Modelos salvos em /models/")
 print("Modelos disponíveis:", repo.listar_modelos())
-input("\nEnter para sair...")

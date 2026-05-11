@@ -50,6 +50,7 @@
     <Content Include="Data\products.csv" />
     <Content Include="Data\sales_pipeline.csv" />
     <Content Include="Data\sales_teams.csv" />
+    <Content Include="Procfile" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
