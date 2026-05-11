@@ -335,6 +335,7 @@
         <main>
             <h2>Bem-vindo ao FlexGestor!</h2>
 
+
             <!-- FILTRO DE PERÍODO -->
             <div class="filtro-periodo">
                 <i class="bi bi-calendar-range" style="color:#1e3c72;font-size:1.8rem"></i>
@@ -409,6 +410,15 @@
                     <div class="card-rodape">
                         <span class="var-neutra"><i class="bi bi-person-check"></i> Base de clientes</span>
                         <span class="kpi-periodo" id="kpi-mes-label3">—</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-cpu"></i> Análise de Estoque (IA)
+                    </div>
+                    <div class="card-body" id="ml-alertas-dashboard">
+                        <!-- preenchido pelo JS -->
                     </div>
                 </div>
 
@@ -527,7 +537,9 @@
         function resetarFiltro() {
             inicializarFiltros();
             aplicarFiltro();
-        }
+        }]
+
+
 
         // ── DASHBOARD ───────────────────────────────────────────
         async function carregarDashboard(dataInicio, dataFim) {
@@ -614,6 +626,8 @@
                 } else {
                     statusGrid.innerHTML = '<div class="kpi-sub" style="grid-column:1/-1">Nenhum pedido no período.</div>';
                 }
+
+
 
                 // ── Top produtos ──
                 const lista = document.getElementById('top-produtos-lista');
