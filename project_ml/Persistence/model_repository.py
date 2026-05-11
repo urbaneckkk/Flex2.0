@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-model_repository.py ó FlexGestor ML
+model_repository.py - FlexGestor ML
 Salva e carrega os 3 modelos treinados usando joblib.
-Cada modelo tem seu prÛprio arquivo .pkl para facilitar retreino independente.
+Cada modelo tem seu pr√≥prio arquivo .pkl para facilitar retreino independente.
 """
 
 import os
@@ -23,11 +23,11 @@ class ModelRepository:
 
     def salvar(self, nome: str, model, scaler, features: list, encoders: dict):
         """
-        Salva todos os artefatos de um modelo em um ˙nico arquivo .pkl.
+        Salva todos os artefatos de um modelo em um √∫nico arquivo .pkl.
         nome: 'cancelamento' | 'inadimplencia' | 'estoque'
         """
         if nome not in self.MODELOS:
-            raise ValueError(f"Modelo '{nome}' n„o reconhecido. Use: {list(self.MODELOS.keys())}")
+            raise ValueError(f"Modelo '{nome}' n√£o reconhecido. Use: {list(self.MODELOS.keys())}")
 
         payload = {
             "model":    model,
@@ -42,15 +42,15 @@ class ModelRepository:
     def carregar(self, nome: str) -> tuple:
         """
         Carrega e retorna (model, scaler, features, encoders).
-        LanÁa FileNotFoundError se o modelo ainda n„o foi treinado.
+        Lan√ßa FileNotFoundError se o modelo ainda n√£o foi treinado.
         """
         if nome not in self.MODELOS:
-            raise ValueError(f"Modelo '{nome}' n„o reconhecido.")
+            raise ValueError(f"Modelo '{nome}' n√£o reconhecido.")
 
         path = os.path.join(MODELS_DIR, self.MODELOS[nome])
         if not os.path.exists(path):
             raise FileNotFoundError(
-                f"Modelo '{nome}' n„o encontrado em {path}. "
+                f"Modelo '{nome}' n√£o encontrado em {path}. "
                 f"Execute main.py para treinar primeiro."
             )
 
@@ -62,5 +62,5 @@ class ModelRepository:
         return os.path.exists(path)
 
     def listar_modelos(self) -> dict:
-        """Retorna quais modelos j· foram treinados."""
+        """Retorna quais modelos j√° foram treinados."""
         return {nome: self.modelo_existe(nome) for nome in self.MODELOS}

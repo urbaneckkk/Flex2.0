@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="~/css/homeCSS/home.css">
     <link rel="stylesheet" href="/css/menuCSS/menu.css">
     <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/mlWidgetsCSS/mlWidgets.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <title>Início - FlexGestor</title>
@@ -510,6 +511,7 @@
     </div>
 
     <script src="~/js/menuJS/menu.js"></script>
+    <script src="~/js/mlWidgetsJS/ml-widgets.js"></script>
     <script>
         const fmt    = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const fmtNum = (v) => Number(v).toLocaleString('pt-BR');
@@ -537,7 +539,7 @@
         function resetarFiltro() {
             inicializarFiltros();
             aplicarFiltro();
-        }]
+        }
 
 
 
@@ -681,6 +683,9 @@
                 // ── Cache para sino do menu ──
                 window.__dashboardCache = d;
                 if (typeof processarDashboardCache === "function") processarDashboardCache(d);
+
+                if (typeof FlexML !== "undefined" && FlexML.dashboardAlertas)
+                    FlexML.dashboardAlertas("#ml-alertas-dashboard", 5);
 
             } catch (err) {
                 console.error('Erro ao carregar dashboard:', err);

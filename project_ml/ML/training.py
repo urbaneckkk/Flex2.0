@@ -11,6 +11,25 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 import numpy as np
 
 
+class ConstantBinaryModel:
+    """Fallback para datasets com apenas uma classe no target."""
+
+    def __init__(self, classe_constante: int):
+        self.classe_constante = int(classe_constante)
+
+    def fit(self, X, y):
+        return self
+
+    def predict(self, X):
+        return np.full(len(X), self.classe_constante, dtype=int)
+
+    def predict_proba(self, X):
+        n = len(X)
+        probs = np.zeros((n, 2), dtype=float)
+        probs[:, self.classe_constante] = 1.0
+        return probs
+
+
 class Trainer:
     """
     Trainer genérico — recebe X, y e treina um GradientBoostingClassifier.
@@ -39,28 +58,45 @@ class Trainer:
         self.y_test  = None
 
     def treinar(self, X, y):
-        """
-        Faz train/test split estratificado (mantém proporção de classes)
-        e treina o modelo.
-        """
-        # Estratificado: garante que a proporção de cancelados/não-cancelados
-        # seja igual no treino e no teste (importante para datasets desbalanceados)
+        classes = np.unique(y)
+        if len(classes) < 2:
+            classe = int(classes[0]) if len(classes) else 0
+            print(
+                f"[{self.nome}] AVISO: target com 1 classe ({classe}). "
+                "Usando modelo constante para não quebrar o pipeline."
+            )
+            self.model = ConstantBinaryModel(classe)
+            self.X_train, self.X_test = X, X
+            self.y_train, self.y_test = y, y
+            self.model.fit(self.X_train, self.y_train)
+            return self.model
+
+        # Com menos de 10 amostras, usa tudo pra treino (sem test split)
+        if len(X) < 10:
+            print(f"[{self.nome}] AVISO: apenas {len(X)} amostras — usando tudo para treino.")
+            self.X_train, self.X_test = X, X
+            self.y_train, self.y_test = y, y
+            self.model.fit(self.X_train, self.y_train)
+            return self.model
+
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y,
-            test_size=0.2,
-            random_state=42,
-            stratify=y,           # ← fundamental para datasets desbalanceados
+            X, y, test_size=0.2, random_state=42, stratify=y,
         )
         self.model.fit(self.X_train, self.y_train)
         print(f"[{self.nome}] Treinado com {len(self.X_train)} amostras.")
         return self.model
 
     def validar_cruzado(self, X, y, folds: int = 5) -> dict:
-        """
-        Cross-validation com k-folds estratificado.
-        Retorna média e desvio padrão do ROC-AUC.
-        Útil para ter uma estimativa mais confiável antes de subir para produção.
-        """
+        if len(np.unique(y)) < 2:
+            print(f"[{self.nome}] Cross-val ignorado — target com apenas 1 classe.")
+            return {}
+
+        # Pula validacao cruzada se nao tiver amostras suficientes
+        min_amostras = folds * 2
+        if len(X) < min_amostras:
+            print(f"[{self.nome}] Cross-val ignorado — amostras insuficientes ({len(X)} < {min_amostras})")
+            return {}
+
         cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=42)
         scores = cross_val_score(self.model, X, y, cv=cv, scoring="roc_auc")
         resultado = {
@@ -68,5 +104,5 @@ class Trainer:
             "roc_auc_std":   round(float(scores.std()),  4),
             "folds":         folds,
         }
-        print(f"[{self.nome}] Cross-val ROC-AUC: {resultado['roc_auc_medio']} ± {resultado['roc_auc_std']}")
+        print(f"[{self.nome}] Cross-val ROC-AUC: {resultado['roc_auc_medio']} +/- {resultado['roc_auc_std']}")
         return resultado

@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, text
 
 DB_URL = os.getenv(
     "FLEXGESTOR_DB_URL",
-    "mysql+mysqlconnector://root:senha@localhost:3306/flexgestor"
+    "mysql+mysqlconnector://root:XpqAjrmizTqhGUBlfIqszKWqOyNmItya@turntable.proxy.rlwy.net:27476/FlexGestor"
 )
 
 
@@ -76,11 +76,7 @@ class DataLoader:
             LEFT  JOIN PedidoStatusHistorico h ON h.idPedido = p.idPedido
             LEFT  JOIN PedidoPagamento pp ON pp.idPedido = p.idPedido
 
-            WHERE p.statusPedido_id IN (
-                SELECT idStatusPedido FROM StatusPedido
-                WHERE Nome IN ('Entregue','Cancelado','Concluido',
-                               'Devolvido','Finalizado')
-            )
+           WHERE p.statusPedido_id IS NOT NULL
             {filtro_empresa}
 
             GROUP BY

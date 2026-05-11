@@ -1,6 +1,8 @@
 ﻿# Dados sensíveis
 appsettings.Development.json
 
+.env
+
 # Build
 bin/
 obj/

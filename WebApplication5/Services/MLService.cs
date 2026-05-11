@@ -9,44 +9,76 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 
 namespace WebApplication5.Services
 {
-    // ─── DTOs de request ───────────────────────────────────
+    // ─── DTOs de request (nomes JSON alinhados a project_ml/ML/preprocessing.py) ──
     public class CancelamentoRequest
     {
         public string Canal { get; set; }
+
         public decimal ValorTotal { get; set; }
+
         public decimal ValorFrete { get; set; }
+
+        [JsonPropertyName("Desconto")]
         public decimal Desconto { get; set; }
+
+        [JsonPropertyName("tipoCliente_id")]
         public int TipoClienteId { get; set; }
+
         public string GeneroCliente { get; set; }
+
         public decimal SaldoDevedor { get; set; }
+
         public int DiasClienteCadastrado { get; set; }
+
         public int TotalItens { get; set; }
+
         public int TotalUnidades { get; set; }
+
         public decimal DescontoMedioItem { get; set; }
+
         public decimal MaiorValorUnitario { get; set; }
+
         public int MudancasStatus { get; set; }
+
         public int DiasNoFunil { get; set; }
+
         public int FormasPagamentoUsadas { get; set; }
+
         public decimal TotalPago { get; set; }
+
         public int DiaSemana { get; set; }
+
         public int Mes { get; set; }
     }
 
     public class InadimplenciaRequest
     {
         public decimal ValorTotal { get; set; }
+
         public int PrazoConcessao { get; set; }
+
+        [JsonPropertyName("tipoCliente_id")]
         public int TipoClienteId { get; set; }
+
+        [JsonPropertyName("Genero")]
         public string Genero { get; set; }
+
         public decimal SaldoDevedor { get; set; }
+
         public int IdadeClienteDias { get; set; }
+
         public int QtdContasAnteriores { get; set; }
+
         public int QtdAtrasoAnteriores { get; set; }
+
         public decimal ValorPedidoOrigem { get; set; }
+
         public string CanalOrigem { get; set; }
+
         public int Mes { get; set; }
     }
 
@@ -62,13 +94,22 @@ namespace WebApplication5.Services
     public class RupturaItem
     {
         public int IdProduto { get; set; }
+
+        [JsonPropertyName("probabilidade_ruptura")]
         public double ProbabilidadeRuptura { get; set; }
+
         public string Risco { get; set; }
+
         public string Cor { get; set; }
+
         public double DiasEstoqueRestante { get; set; }
+
         public double GiroDiario { get; set; }
+
         public int EstoqueAtual { get; set; }
+
         public int EstoqueMinimo { get; set; }
+
         public int Vendido30d { get; set; }
     }
 
@@ -83,6 +124,11 @@ namespace WebApplication5.Services
         private static readonly JsonSerializerOptions _jsonOpts = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true,
+        };
+
+        private static readonly JsonSerializerOptions _rupturaJsonOpts = new JsonSerializerOptions
+        {
             PropertyNameCaseInsensitive = true,
         };
 
@@ -158,11 +204,8 @@ namespace WebApplication5.Services
                 resp.EnsureSuccessStatusCode();
                 var json = await resp.Content.ReadAsStringAsync();
 
-                return JsonSerializer.Deserialize<List<RupturaItem>>(json, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    PropertyNameCaseInsensitive = true,
-                }) ?? new List<RupturaItem>();
+                return JsonSerializer.Deserialize<List<RupturaItem>>(json, _rupturaJsonOpts)
+                    ?? new List<RupturaItem>();
             }
             catch (Exception ex)
             {

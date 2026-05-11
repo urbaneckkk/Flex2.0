@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using WebApplication5.Models;
 using WebApplication5.Services;
@@ -8,11 +9,13 @@ namespace WebApplication5.Controllers
     {
         private readonly PedidoService _service;
         private readonly AuditoriaService _auditoria;
+        private readonly MLService _ml;
 
-        public PedidoController(PedidoService service, AuditoriaService auditoria)
+        public PedidoController(PedidoService service, AuditoriaService auditoria, MLService ml)
         {
             _service = service;
             _auditoria = auditoria;
+            _ml = ml;
         }
 
         public IActionResult Index()
@@ -100,6 +103,44 @@ namespace WebApplication5.Controllers
         {
             var r = VerificarSessaoApi(); if (r != null) return r;
             return Json(_service.ListarHistoricoStatus(idPedido));
+        }
+
+        /// <summary>Rota esperada pelo wwwroot/js/pedidoJS/pedido.js (alias).</summary>
+        public IActionResult ListarHistorico(int idPedido) => ListarHistoricoStatus(idPedido);
+
+        [HttpGet]
+        public async Task<IActionResult> PredicaoMlCancelamento(int idPedido)
+        {
+            var r = VerificarSessaoApi(); if (r != null) return r;
+            var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
+            var f = _service.BuscarFeaturesPredicaoMlCancelamento(idEmpresa, idPedido);
+            if (f == null) return NotFound();
+
+            var req = new CancelamentoRequest
+            {
+                Canal = f.canal ?? "PROPRIO",
+                ValorTotal = f.valorTotal,
+                ValorFrete = f.valorFrete,
+                Desconto = f.Desconto,
+                TipoClienteId = f.tipoCliente_id,
+                GeneroCliente = string.IsNullOrWhiteSpace(f.generoCliente) ? "N" : f.generoCliente,
+                SaldoDevedor = f.saldoDevedor,
+                DiasClienteCadastrado = f.diasClienteCadastrado,
+                TotalItens = f.totalItens,
+                TotalUnidades = f.totalUnidades,
+                DescontoMedioItem = f.descontoMedioItem,
+                MaiorValorUnitario = f.maiorValorUnitario,
+                MudancasStatus = f.mudancasStatus,
+                DiasNoFunil = f.diasNoFunil,
+                FormasPagamentoUsadas = f.formasPagamentoUsadas,
+                TotalPago = f.totalPago,
+                DiaSemana = f.diaSemana,
+                Mes = f.mes,
+            };
+
+            var pred = await _ml.PredictCancelamento(req);
+            if (pred == null) return StatusCode(503, new { erro = "Serviço ML indisponível" });
+            return Json(pred);
         }
 
         // Busca total ja pago de um pedido via caixa

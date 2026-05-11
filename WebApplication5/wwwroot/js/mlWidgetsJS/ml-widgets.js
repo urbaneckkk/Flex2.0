@@ -22,6 +22,18 @@ const FlexML = (() => {
     const _get = (url) =>
         fetch(url).then(r => r.ok ? r.json() : null).catch(() => null);
 
+    // Lida com diferenças de contrato (camelCase/snake_case) e evita NaN no front.
+    const _num = (v, fallback = 0) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fallback;
+    };
+
+    const _pickProbRuptura = (item) =>
+        _num(item?.probabilidadeRuptura ?? item?.probabilidade_ruptura, 0);
+
+    const _pickDiasRestantes = (item) =>
+        _num(item?.diasEstoqueRestante ?? item?.dias_estoque_restante, 0);
+
     // Renderiza o chip de risco (BAIXO / MEDIO / ALTO)
     const _chipHtml = (label, risco, cor, prob) => `
         <span class="ml-chip ml-chip--${risco.toLowerCase()}"
@@ -66,6 +78,30 @@ const FlexML = (() => {
         el.innerHTML = _chipHtml(res.label, res.risco, res.cor, res.probabilidade);
     };
 
+    /**
+     * Busca predição com base nas features agregadas no servidor (espelha data_loader).
+     * GET /Pedido/PredicaoMlCancelamento?idPedido=
+     */
+    const cancelamentoPorPedido = async (idPedido, selector) => {
+        const el = document.querySelector(selector);
+        if (!el) return;
+
+        el.innerHTML = _loadingHtml();
+
+        const res = await fetch(`/Pedido/PredicaoMlCancelamento?idPedido=${encodeURIComponent(idPedido)}`)
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null);
+
+        if (!res || res.erro) {
+            el.innerHTML = res?.erro
+                ? `<span class="ml-chip ml-chip--muted" title="ML">${res.erro}</span>`
+                : '';
+            return;
+        }
+
+        el.innerHTML = _chipHtml(res.label, res.risco, res.cor, res.probabilidade);
+    };
+
     // ── API 2: Risco de Inadimplência ──────────────────────
     /**
      * @param {Object} clienteData - campos do InadimplenciaRequest
@@ -104,22 +140,24 @@ const FlexML = (() => {
             const id = parseInt(row.dataset.produtoId);
             const item = mapa[id];
             if (!item) return;
+            const prob = _pickProbRuptura(item);
+            const diasRestantes = _pickDiasRestantes(item);
 
             const col = row.querySelector(colunaSelector);
             if (!col) return;
 
             col.innerHTML = _chipHtml(
-                `${Math.round(item.probabilidadeRuptura * 100)}% risco`,
+                `${Math.round(prob * 100)}% risco`,
                 item.risco,
                 item.cor,
-                item.probabilidadeRuptura
+                prob
             );
 
             // Badge extra: dias restantes
-            if (item.diasEstoqueRestante < 15) {
+            if (diasRestantes < 15) {
                 col.innerHTML += `
                     <span class="ml-chip ml-chip--warning" title="Dias de estoque restantes">
-                        <i class="bi bi-clock"></i> ~${Math.round(item.diasEstoqueRestante)}d
+                        <i class="bi bi-clock"></i> ~${Math.round(diasRestantes)}d
                     </span>`;
             }
         });
@@ -160,15 +198,15 @@ const FlexML = (() => {
                         <span class="ml-lista-ruptura__id">Prod. #${item.idProduto}</span>
                         <div class="ml-lista-ruptura__barra">
                             <div class="ml-lista-ruptura__fill"
-                                 style="width:${Math.round(item.probabilidadeRuptura * 100)}%;
+                                 style="width:${Math.round(_pickProbRuptura(item) * 100)}%;
                                         background:${item.cor}">
                             </div>
                         </div>
                         <span class="ml-lista-ruptura__prob"
                               style="color:${item.cor}">
-                            ${Math.round(item.probabilidadeRuptura * 100)}%
+                            ${Math.round(_pickProbRuptura(item) * 100)}%
                         </span>
-                        <span class="ml-lista-ruptura__dias">~${Math.round(item.diasEstoqueRestante)}d</span>
+                        <span class="ml-lista-ruptura__dias">~${Math.round(_pickDiasRestantes(item))}d</span>
                     </li>
                 `).join('')}
             </ul>
@@ -177,6 +215,6 @@ const FlexML = (() => {
     };
 
     // ── Exposição pública ───────────────────────────────────
-    return { cancelamento, inadimplencia, rupturaEstoque, dashboardAlertas };
+    return { cancelamento, cancelamentoPorPedido, inadimplencia, rupturaEstoque, dashboardAlertas };
 
 })();

@@ -24,7 +24,7 @@ namespace WebApplication5.Controllers
         [HttpGet("ruptura-estoque")]
         public async Task<IActionResult> RupturaEstoque()
         {
-            var idEmpresa = HttpContext.Session.GetInt32("idEmpresa");
+            var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa");
             if (idEmpresa == null) return Unauthorized();
 
             var resultado = await _ml.GetRupturaEstoque(idEmpresa.Value);

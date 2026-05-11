@@ -235,7 +235,7 @@ function renderizarTabela() {
 
     // Caso não tenha dados, mostra estado vazio
     if (!listaFiltrada.length) {
-        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Nenhum item encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Nenhum item encontrado.</td></tr>`;
         return;
     }
 
@@ -267,7 +267,7 @@ function renderizarTabela() {
         const max = item.estoqueMax ?? 0;
 
         return `
-        <tr>
+        <tr data-produto-id="${item.idProduto}">
             <td class="area-acoes">
                 <button class="btn-acao btn-editar"
                     onclick="abrirModalMovimentacao(${item.idProduto}, '${nome}')">
@@ -281,6 +281,8 @@ function renderizarTabela() {
             </td>
 
             <td><span class="status-pill ${classSt}">${labelSt}</span></td>
+
+            <td class="ml-risco-estoque-col"></td>
 
             <td title="${item.nomeProduto}">${item.nomeProduto}</td>
 
@@ -297,6 +299,9 @@ function renderizarTabela() {
             <td>${formatarData(item.dthUltimaAtualizacao)}</td>
         </tr>`;
     }).join("");
+
+    if (typeof FlexML !== "undefined" && FlexML.rupturaEstoque)
+        FlexML.rupturaEstoque("#tabela-estoque", ".ml-risco-estoque-col");
 }
 
 // ── Modal: Inserir no Estoque (Wizard 4 etapas) ───────────────────────────

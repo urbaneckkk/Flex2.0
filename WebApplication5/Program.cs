@@ -13,7 +13,7 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.AddService<PermissaoFilter>();
 });
 
-// Usuário / Auth
+// Usuï¿½rio / Auth
 builder.Services.AddScoped<UsuarioRepository>();
 builder.Services.AddScoped<CargoRepository>();
 builder.Services.AddScoped<UsuarioService>();
@@ -44,6 +44,7 @@ builder.Services.AddScoped<PedidoRepository>();
 builder.Services.AddScoped<PedidoService>();
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("ML");
 builder.Services.AddScoped<MLService>();
 
 // Categoria Produto
@@ -78,7 +79,7 @@ builder.Services.AddScoped<DespesaService>();
 builder.Services.AddScoped<EmpresaRepository>();
 builder.Services.AddScoped<EmpresaService>();
 
-// Permissão
+// Permissï¿½o
 builder.Services.AddScoped<PermissaoRepository>();
 builder.Services.AddScoped<PermissaoService>();
 

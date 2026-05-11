@@ -761,10 +761,15 @@ async function abrirModalDetalhe(idPedido) {
     } catch { /* silencioso */ }
 
     document.getElementById("modal-detalhe-pedido").classList.add("open");
+
+    if (typeof FlexML !== "undefined" && FlexML.cancelamentoPorPedido)
+        FlexML.cancelamentoPorPedido(idPedido, "#det-ml-cancelamento");
 }
 
 function fecharModalDetalhe() {
     document.getElementById("modal-detalhe-pedido").classList.remove("open");
+    const mlEl = document.getElementById("det-ml-cancelamento");
+    if (mlEl) mlEl.innerHTML = "";
     _pedidoDetalheAtual = null;
 }
 

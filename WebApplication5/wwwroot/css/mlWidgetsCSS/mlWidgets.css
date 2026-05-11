@@ -65,6 +65,12 @@
     --chip-color: #fb923c;
 }
 
+.ml-chip--muted {
+    --chip-color: #6b7280;
+    opacity: 0.95;
+    font-weight: 500;
+}
+
 /* ── Loading ────────────────────────────────────────────── */
 .ml-chip--loading {
     --chip-color: #6b7491;
