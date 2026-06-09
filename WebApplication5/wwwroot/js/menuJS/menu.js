@@ -21,13 +21,13 @@ const menuItens = [
             { label: "Movimentações", rota: "EstoqueHistorico" }
         ]
     },
-    {
-        label: "Compras", icone: "bi-truck", futuro: true,
-        filhos: [
-            { label: "Pedidos de Compra", futuro: true },
-            { label: "Entrada de Mercadoria", futuro: true }
-        ]
-    },
+    //{
+    //    label: "Compras", icone: "bi-truck", futuro: true,
+    //    filhos: [
+    //        { label: "Pedidos de Compra", futuro: true },
+    //        { label: "Entrada de Mercadoria", futuro: true }
+    //    ]
+    //},
     {
         label: "Pessoas", icone: "bi-people-fill", rota: "Cliente",
         filhos: [
