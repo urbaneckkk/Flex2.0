@@ -14,7 +14,7 @@ namespace WebApplication5.Services
             _repo = repo;
             _estoqueService = estoqueService;
         }
-
+         
         public IEnumerable<PedidoListaGridDto> Listar(int idEmpresa)
             => _repo.Listar(idEmpresa);
 
