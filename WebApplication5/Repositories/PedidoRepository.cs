@@ -22,19 +22,43 @@ namespace WebApplication5.Repositories
                 commandType: CommandType.StoredProcedure);
         }
 
-        // ── CORRIGIDO: ExecuteScalar não funciona com SP no MySQL/Dapper.
-        // A SP retorna "SELECT LAST_INSERT_ID() AS idPedido" — usa QueryFirstOrDefault.
+        public void DeletarItens(int idPedido)
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Execute(
+                "sp_DeletarItensPedido",
+                new { p_idPedido = idPedido },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public void AtualizarCabecalho(int idPedido, decimal valorTotal,
+            decimal desconto, decimal valorFrete, string? observacao)
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Execute(
+                "sp_AtualizarCabecalhoPedido",
+                new
+                {
+                    p_idPedido = idPedido,
+                    p_valorTotal = valorTotal,
+                    p_Desconto = desconto,
+                    p_valorFrete = valorFrete,
+                    p_Observacao = observacao
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
         public int Inserir(PedidoModel pedido)
         {
             using var conn = new MySqlConnection(_connectionString);
-            var result = conn.QueryFirstOrDefault<int>(
+            return conn.ExecuteScalar<int>(
                 "sp_CriarPedido",
                 new
                 {
                     p_cliente_id = pedido.IdCliente,
                     p_usuario_id = pedido.IdUsuario,
                     p_idEmpresa = pedido.IdEmpresa,
-                    p_endereco_id = pedido.EnderecoId > 0 ? pedido.EnderecoId : 1, // SP espera INT, não nullable
+                    p_endereco_id = pedido.EnderecoId > 0 ? pedido.EnderecoId : (int?)null,
                     p_canal = pedido.Canal ?? "PROPRIO",
                     p_numeroExterno = pedido.NumeroExterno,
                     p_statusPedido_id = pedido.StatusPedidoId,
@@ -44,11 +68,6 @@ namespace WebApplication5.Repositories
                     p_Observacao = pedido.Observacao
                 },
                 commandType: CommandType.StoredProcedure);
-
-            if (result <= 0)
-                throw new InvalidOperationException("Falha ao criar pedido: ID não retornado pela SP.");
-
-            return result;
         }
 
         public void InserirItem(PedidoItemModel item)
@@ -77,15 +96,6 @@ namespace WebApplication5.Repositories
                 commandType: CommandType.StoredProcedure);
         }
 
-        public void DeletarItens(int idPedido)
-        {
-            using var conn = new MySqlConnection(_connectionString);
-            conn.Execute(
-                "sp_DeletarItensPedido",
-                new { p_idPedido = idPedido },
-                commandType: CommandType.StoredProcedure);
-        }
-
         public void AtualizarStatus(int idPedido, int statusPedidoId,
             int idUsuario, string? observacao = null)
         {
@@ -98,23 +108,6 @@ namespace WebApplication5.Repositories
                     p_statusPedido_id = statusPedidoId,
                     p_idUsuario = idUsuario,
                     p_observacao = observacao
-                },
-                commandType: CommandType.StoredProcedure);
-        }
-
-        public void AtualizarCabecalho(int idPedido, decimal valorTotal,
-            decimal desconto, decimal valorFrete, string? observacao)
-        {
-            using var conn = new MySqlConnection(_connectionString);
-            conn.Execute(
-                "sp_AtualizarCabecalhoPedido",
-                new
-                {
-                    p_idPedido = idPedido,
-                    p_valorTotal = valorTotal,
-                    p_Desconto = desconto,
-                    p_valorFrete = valorFrete,
-                    p_Observacao = observacao
                 },
                 commandType: CommandType.StoredProcedure);
         }
@@ -168,6 +161,7 @@ namespace WebApplication5.Repositories
                 commandType: CommandType.StoredProcedure);
         }
 
+        // ── NOVO: total pago via caixa para um pedido ──
         public decimal BuscarTotalPago(int idPedido)
         {
             using var conn = new MySqlConnection(_connectionString);
@@ -177,6 +171,7 @@ namespace WebApplication5.Repositories
                 commandType: CommandType.StoredProcedure);
         }
 
+        // ── NOVO: registra pagamento no caixa via SP e retorna resultado ──
         public PagarPedidoResultado PagarPedido(PagarPedidoDto dto, int idEmpresa, int idUsuario)
         {
             using var conn = new MySqlConnection(_connectionString);
@@ -198,46 +193,63 @@ namespace WebApplication5.Repositories
 
                 return result ?? throw new InvalidOperationException("Erro ao processar pagamento.");
             }
-            catch (MySqlException ex) when (ex.Message.Contains("Nenhum caixa aberto"))
+            catch (MySql.Data.MySqlClient.MySqlException ex)
+                when (ex.Message.Contains("Nenhum caixa aberto"))
             {
                 throw new InvalidOperationException(ex.Message);
             }
         }
 
+        /// <summary>
+        /// Agregação espelha project_ml Domain/data_loader.py carregar_pedidos (por pedido).
+        /// </summary>
         public MlPedidoCancelamentoFeaturesDto? BuscarFeaturesPredicaoMlCancelamento(int idEmpresa, int idPedido)
         {
             const string sql = @"
-                SELECT
-                    p.canal                                       AS canal,
-                    p.valorTotal                                  AS valorTotal,
-                    COALESCE(p.valorFrete, 0)                     AS valorFrete,
-                    COALESCE(p.Desconto, 0)                       AS Desconto,
-                    COALESCE(c.tipoCliente_id, 0)                 AS tipoCliente_id,
-                    COALESCE(c.Genero, 'N')                       AS generoCliente,
-                    COALESCE(c.saldoDevedor, 0)                   AS saldoDevedor,
-                    DATEDIFF(p.dthPedido, c.dthCadastro)          AS diasClienteCadastrado,
-                    COUNT(DISTINCT pi.idPedidoItem)               AS totalItens,
-                    COALESCE(SUM(pi.quantidade), 0)               AS totalUnidades,
-                    COALESCE(AVG(pi.desconto), 0)                 AS descontoMedioItem,
-                    COALESCE(MAX(pi.valorUnitario), 0)            AS maiorValorUnitario,
-                    COUNT(DISTINCT h.idHistorico)                 AS mudancasStatus,
-                    COALESCE(DATEDIFF(MAX(h.dthAlteracao), MIN(h.dthAlteracao)), 0) AS diasNoFunil,
-                    COUNT(DISTINCT pp.idPagamento)                AS formasPagamentoUsadas,
-                    COALESCE(SUM(pp.valor), 0)                    AS totalPago,
-                    DAYOFWEEK(p.dthPedido)                        AS diaSemana,
-                    MONTH(p.dthPedido)                            AS mes
-                FROM Pedido p
-                INNER JOIN Cliente c ON c.idCliente = p.cliente_id
-                LEFT JOIN PedidoItem pi ON pi.idPedido = p.idPedido
-                LEFT JOIN PedidoStatusHistorico h ON h.idPedido = p.idPedido
-                LEFT JOIN PedidoPagamento pp ON pp.idPedido = p.idPedido
-                WHERE p.statusPedido_id IS NOT NULL
-                  AND p.idEmpresa = @idEmpresa
-                  AND p.idPedido  = @idPedido
-                GROUP BY
-                    p.idPedido, p.idEmpresa, p.canal, p.valorTotal, p.valorFrete,
-                    p.Desconto, p.statusPedido_id, c.tipoCliente_id, c.Genero,
-                    c.saldoDevedor, c.dthCadastro, p.dthPedido";
+            SELECT
+                p.canal                                       AS canal,
+                p.valorTotal                                  AS valorTotal,
+                COALESCE(p.valorFrete, 0)                     AS valorFrete,
+                COALESCE(p.Desconto, 0)                       AS Desconto,
+                COALESCE(c.tipoCliente_id, 0)                 AS tipoCliente_id,
+                COALESCE(c.Genero, 'N')                       AS generoCliente,
+                COALESCE(c.saldoDevedor, 0)                   AS saldoDevedor,
+                DATEDIFF(p.dthPedido, c.dthCadastro)          AS diasClienteCadastrado,
+                COUNT(DISTINCT pi.idPedidoItem)               AS totalItens,
+                COALESCE(SUM(pi.quantidade), 0)               AS totalUnidades,
+                COALESCE(AVG(pi.desconto), 0)                 AS descontoMedioItem,
+                COALESCE(MAX(pi.valorUnitario), 0)            AS maiorValorUnitario,
+                COUNT(DISTINCT h.idHistorico)                 AS mudancasStatus,
+                COALESCE(DATEDIFF(
+                    MAX(h.dthAlteracao),
+                    MIN(h.dthAlteracao)
+                ), 0)                                         AS diasNoFunil,
+                COUNT(DISTINCT pp.idPagamento)                AS formasPagamentoUsadas,
+                COALESCE(SUM(pp.valor), 0)                    AS totalPago,
+                DAYOFWEEK(p.dthPedido)                        AS diaSemana,
+                MONTH(p.dthPedido)                            AS mes
+            FROM Pedido p
+            INNER JOIN Cliente c ON c.idCliente = p.cliente_id
+            LEFT JOIN PedidoItem pi ON pi.idPedido = p.idPedido
+            LEFT JOIN PedidoStatusHistorico h ON h.idPedido = p.idPedido
+            LEFT JOIN PedidoPagamento pp ON pp.idPedido = p.idPedido
+            WHERE p.statusPedido_id IS NOT NULL
+              AND p.idEmpresa = @idEmpresa
+              AND p.idPedido = @idPedido
+            GROUP BY
+                p.idPedido,
+                p.idEmpresa,
+                p.canal,
+                p.valorTotal,
+                p.valorFrete,
+                p.Desconto,
+                p.statusPedido_id,
+                c.tipoCliente_id,
+                c.Genero,
+                c.saldoDevedor,
+                c.dthCadastro,
+                p.dthPedido;
+            ";
 
             using var conn = new MySqlConnection(_connectionString);
             return conn.QueryFirstOrDefault<MlPedidoCancelamentoFeaturesDto>(sql,
