@@ -45,11 +45,6 @@ builder.Services.AddScoped<EstoqueHistoricoService>();
 builder.Services.AddScoped<PedidoRepository>();
 builder.Services.AddScoped<PedidoService>();
 
-// ── ML ───────────────────────────────────────────────────────────────────────
-builder.Services.AddHttpClient();
-builder.Services.AddHttpClient("ML");
-builder.Services.AddScoped<MLService>();
-
 // ── Categoria Produto ────────────────────────────────────────────────────────
 builder.Services.AddScoped<CategoriaProdutoRepository>();
 builder.Services.AddScoped<CategoriaProdutoService>();

@@ -9,7 +9,7 @@ const MENU_ICONES = {
     'Cliente': 'bi-people-fill', 'Pedido': 'bi-bag-fill',
     'Caixa': 'bi-cash-coin', 'Estoque': 'bi-boxes',
     'Auditoria': 'bi-shield-check', 'Fornecedor': 'bi-building',
-    'CategoriaProduto': 'bi-tag-fill', 'ML': 'bi-graph-up-arrow',
+    'CategoriaProduto': 'bi-tag-fill',
     'Permissao': 'bi-shield-lock-fill', 'Financeiro': 'bi-bank',
     'Despesa': 'bi-receipt', 'Produto': 'bi-box-seam',
     'EstoqueHistorico': 'bi-clock-history',

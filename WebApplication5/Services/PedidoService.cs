@@ -98,9 +98,6 @@ namespace WebApplication5.Services
         public IEnumerable<dynamic> ListarHistoricoStatus(int idPedido)
             => _repo.ListarHistoricoStatus(idPedido);
 
-        public MlPedidoCancelamentoFeaturesDto? BuscarFeaturesPredicaoMlCancelamento(int idEmpresa, int idPedido)
-            => _repo.BuscarFeaturesPredicaoMlCancelamento(idEmpresa, idPedido);
-
         // ── NOVO: total pago via caixa para um pedido ──
         public decimal BuscarTotalPago(int idPedido)
             => _repo.BuscarTotalPago(idPedido);

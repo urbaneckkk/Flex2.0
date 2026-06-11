@@ -282,8 +282,6 @@ function renderizarTabela() {
 
             <td><span class="status-pill ${classSt}">${labelSt}</span></td>
 
-            <td class="ml-risco-estoque-col"></td>
-
             <td title="${item.nomeProduto}">${item.nomeProduto}</td>
 
             <td><strong class="${qtdClass}">${qtd}</strong></td>
@@ -300,8 +298,6 @@ function renderizarTabela() {
         </tr>`;
     }).join("");
 
-    if (typeof FlexML !== "undefined" && FlexML.rupturaEstoque)
-        FlexML.rupturaEstoque("#tabela-estoque", ".ml-risco-estoque-col");
 }
 
 // ── Modal: Inserir no Estoque (Wizard 4 etapas) ───────────────────────────

@@ -236,10 +236,16 @@ function renderizarBreakdownData(data) {
 // ── Abas ─────────────────────────────────
 // ── Abas ─────────────────────────────────────────────────────────────────
 function mudarAba(aba) {
-    document.querySelectorAll(".fin-aba-btn").forEach(b => b.classList.remove("ativa"));
-    document.getElementById(`aba-btn-${aba}`)?.classList.add("ativa");
-    document.getElementById("painel-receber").style.display = aba === "receber" ? "" : "none";
-    document.getElementById("painel-pagar").style.display = aba === "pagar" ? "" : "none";
+    // Botões
+    document.querySelectorAll(".aba-btn").forEach(b => b.classList.remove("ativa"));
+    document.getElementById(`aba-${aba}`)?.classList.add("ativa");
+
+    // Painéis
+    const paineis = ["lancamentos", "contas", "historico"];
+    paineis.forEach(p => {
+        const el = document.getElementById(`conteudo-${p}`);
+        if (el) el.style.display = p === aba ? "" : "none";
+    });
 }
 
 // ── Filtros ───────────────────────────────────────────────────────────────
@@ -522,7 +528,6 @@ async function salvarNovaReceber() {
 }
 
 // ── Modal: Receber Pagamento ──────────────────────────────────────────────
-let _contaReceberAtual = null;
 function abrirModalReceberPagamento(id) {
     _contaReceberAtual = contasReceber.find(c => c.idContaReceber === id);
     if (!_contaReceberAtual) return;

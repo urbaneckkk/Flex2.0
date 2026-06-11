@@ -762,8 +762,6 @@ async function abrirModalDetalhe(idPedido) {
 
     document.getElementById("modal-detalhe-pedido").classList.add("open");
 
-    if (typeof FlexML !== "undefined" && FlexML.cancelamentoPorPedido)
-        FlexML.cancelamentoPorPedido(idPedido, "#det-ml-cancelamento");
 }
 
 function fecharModalDetalhe() {
