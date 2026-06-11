@@ -44,9 +44,9 @@ public class ClienteController : BaseController
             Auditar("CLIENTE", "CRIAR", $"Cliente '{dto.Cliente.nome}' criado (CPF: {dto.Cliente.cpfCNPJ})");
             return Ok(new { idCliente = idGerado });
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { mensagem = ex.Message });
+            return StatusCode(500, new { mensagem = ex.Message });
         }
     }
 

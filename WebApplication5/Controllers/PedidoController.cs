@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+// ===== PedidoController.cs =====
 using Microsoft.AspNetCore.Mvc;
 using WebApplication5.Models;
 using WebApplication5.Services;
@@ -15,7 +15,7 @@ namespace WebApplication5.Controllers
         {
             _service = service;
             _auditoria = auditoria;
-            _ml = ml; 
+            _ml = ml;
         }
 
         public IActionResult Index()
@@ -49,9 +49,14 @@ namespace WebApplication5.Controllers
                 Auditar("PEDIDO", "CRIAR", $"Pedido #{idGerado} criado");
                 return Ok(new { idPedido = idGerado });
             }
-            catch (Exception ex) // ← adiciona isso
+            catch (InvalidOperationException ex)
             {
-                return StatusCode(500, new { mensagem = ex.Message });
+                return BadRequest(new { mensagem = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Loga e devolve mensagem útil em vez de 500 genérico
+                return StatusCode(500, new { mensagem = "Erro interno ao criar pedido.", detalhe = ex.Message });
             }
         }
 
@@ -60,9 +65,16 @@ namespace WebApplication5.Controllers
         {
             var r = VerificarSessaoApi(); if (r != null) return r;
             var idUsuario = HttpContext.Session.GetInt32("idUsuario")!.Value;
-            _service.AtualizarStatus(dto.IdPedido, dto.StatusPedidoId, idUsuario);
-            Auditar("PEDIDO", "ALTERAR_STATUS", $"Pedido #{dto.IdPedido} -> status {dto.StatusPedidoId}");
-            return Ok();
+            try
+            {
+                _service.AtualizarStatus(dto.IdPedido, dto.StatusPedidoId, idUsuario);
+                Auditar("PEDIDO", "ALTERAR_STATUS", $"Pedido #{dto.IdPedido} -> status {dto.StatusPedidoId}");
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = ex.Message });
+            }
         }
 
         [HttpPost]
@@ -70,9 +82,16 @@ namespace WebApplication5.Controllers
         {
             var r = VerificarSessaoApi(); if (r != null) return r;
             var idUsuario = HttpContext.Session.GetInt32("idUsuario")!.Value;
-            _service.Cancelar(idPedido, idUsuario);
-            Auditar("PEDIDO", "CANCELAR", $"Pedido #{idPedido} cancelado");
-            return Ok();
+            try
+            {
+                _service.Cancelar(idPedido, idUsuario);
+                Auditar("PEDIDO", "CANCELAR", $"Pedido #{idPedido} cancelado");
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = ex.Message });
+            }
         }
 
         [HttpPost]
@@ -91,6 +110,10 @@ namespace WebApplication5.Controllers
             {
                 return BadRequest(new { mensagem = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = "Erro interno ao editar pedido.", detalhe = ex.Message });
+            }
         }
 
         public IActionResult ListarPagamentos(int idPedido)
@@ -105,7 +128,7 @@ namespace WebApplication5.Controllers
             return Json(_service.ListarHistoricoStatus(idPedido));
         }
 
-        /// <summary>Rota esperada pelo wwwroot/js/pedidoJS/pedido.js (alias).</summary>
+        /// <summary>Alias esperado pelo pedido.js.</summary>
         public IActionResult ListarHistorico(int idPedido) => ListarHistoricoStatus(idPedido);
 
         [HttpGet]
@@ -113,6 +136,7 @@ namespace WebApplication5.Controllers
         {
             var r = VerificarSessaoApi(); if (r != null) return r;
             var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
+
             var f = _service.BuscarFeaturesPredicaoMlCancelamento(idEmpresa, idPedido);
             if (f == null) return NotFound();
 
@@ -143,7 +167,6 @@ namespace WebApplication5.Controllers
             return Json(pred);
         }
 
-        // Busca total ja pago de um pedido via caixa
         public IActionResult TotalPago(int idPedido)
         {
             var r = VerificarSessaoApi(); if (r != null) return r;
@@ -151,7 +174,6 @@ namespace WebApplication5.Controllers
             return Json(new { totalPago = total });
         }
 
-        // Registra pagamento do pedido no caixa
         [HttpPost]
         public IActionResult Pagar([FromBody] PagarPedidoDto dto)
         {
@@ -165,17 +187,19 @@ namespace WebApplication5.Controllers
             try
             {
                 var resultado = _service.PagarPedido(dto, idEmpresa, idUsuario);
-
                 var descAuditoria = resultado.Concluido
                     ? $"Pedido #{dto.IdPedido} CONCLUIDO - pago R$ {dto.Valor:F2}"
                     : $"Pedido #{dto.IdPedido} - pagamento parcial R$ {dto.Valor:F2}";
-
                 Auditar("PEDIDO", resultado.Concluido ? "CONCLUIR" : "PAGAMENTO_PARCIAL", descAuditoria);
                 return Ok(resultado);
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { mensagem = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = "Erro interno ao registrar pagamento.", detalhe = ex.Message });
             }
         }
 

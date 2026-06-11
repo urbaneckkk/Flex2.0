@@ -14,7 +14,7 @@ namespace WebApplication5.Services
             _repo = repo;
             _estoqueService = estoqueService;
         }
-         
+
         public IEnumerable<PedidoListaGridDto> Listar(int idEmpresa)
             => _repo.Listar(idEmpresa);
 
@@ -28,14 +28,19 @@ namespace WebApplication5.Services
             pedido.IdUsuario = idUsuario;
             pedido.StatusPedidoId = 1; // PENDENTE
             pedido.DthCriacao = DateTime.Now;
+
             _estoqueService.ValidarEstoque(dto.Itens, idEmpresa);
 
+            // Recalcula ValorTotal com os itens vindos do DTO (os ValorTotal dos itens
+            // ainda não foram calculados aqui, então calcula inline)
             pedido.ValorTotal =
-                dto.Itens.Sum(i => i.ValorTotal) + pedido.ValorFrete - pedido.Desconto;
+                dto.Itens.Sum(i => (i.ValorUnitario * i.Quantidade) - i.Desconto)
+                + pedido.ValorFrete
+                - pedido.Desconto;
 
-            if (pedido.EnderecoId == 0) pedido.EnderecoId = 1;
+            if (pedido.EnderecoId <= 0) pedido.EnderecoId = 1;
 
-            var idPedido = _repo.Inserir(pedido);
+            var idPedido = _repo.Inserir(pedido); // lança InvalidOperationException se retornar 0
 
             foreach (var item in dto.Itens)
             {
@@ -56,6 +61,7 @@ namespace WebApplication5.Services
 
         public void Editar(PedidoEditarDto dto, int idEmpresa, int idUsuario)
         {
+            // Devolve estoque dos itens antigos antes de reprocessar
             var itensAntigos = _repo.ListarItens(dto.IdPedido);
             foreach (var item in itensAntigos)
                 _estoqueService.Movimentar(new MovimentacaoEstoqueModel
@@ -101,11 +107,9 @@ namespace WebApplication5.Services
         public MlPedidoCancelamentoFeaturesDto? BuscarFeaturesPredicaoMlCancelamento(int idEmpresa, int idPedido)
             => _repo.BuscarFeaturesPredicaoMlCancelamento(idEmpresa, idPedido);
 
-        // ── NOVO: total pago via caixa para um pedido ──
         public decimal BuscarTotalPago(int idPedido)
             => _repo.BuscarTotalPago(idPedido);
 
-        // ── NOVO: registra pagamento no caixa e conclui se quitado ──
         public PagarPedidoResultado PagarPedido(PagarPedidoDto dto, int idEmpresa, int idUsuario)
             => _repo.PagarPedido(dto, idEmpresa, idUsuario);
     }
