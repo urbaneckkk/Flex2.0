@@ -21,44 +21,51 @@ namespace WebApplication5.Controllers
         public IActionResult Index() => View();
 
         [HttpPost]
+        [HttpPost]
         public IActionResult Entrar(string login, string senha, string cnpj)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-            var user = _service.Autenticar(login, senha, cnpj);
-
-            if (user == null)
+            try
             {
-                // Registra tentativa falha
+                var user = _service.Autenticar(login, senha, cnpj);
+
+                if (user == null)
+                {
+                    _auditoria.Registrar(new RegistrarAuditoriaDto
+                    {
+                        IdEmpresa = 0,
+                        NomeUsuario = login,
+                        Modulo = "AUTH",
+                        Acao = "LOGIN_FALHA",
+                        Descricao = $"Tentativa de login falhou para '{login}'",
+                        IpUsuario = ip
+                    });
+                    ModelState.AddModelError(string.Empty, "Login ou senha inválidos");
+                    return View("Index");
+                }
+
+                HttpContext.Session.SetInt32("idUsuario", user.IdUsuario);
+                HttpContext.Session.SetString("nomeUsuario", user.Nome);
+                HttpContext.Session.SetInt32("IdEmpresa", user.idEmpresa);
+                HttpContext.Session.SetInt32("cargo_id", user.cargo_id);
+
                 _auditoria.Registrar(new RegistrarAuditoriaDto
                 {
-                    IdEmpresa = 0,
-                    NomeUsuario = login,
+                    IdEmpresa = user.idEmpresa,
+                    IdUsuario = user.IdUsuario,
+                    NomeUsuario = user.Nome,
                     Modulo = "AUTH",
-                    Acao = "LOGIN_FALHA",
-                    Descricao = $"Tentativa de login falhou para '{login}'",
+                    Acao = "LOGIN",
+                    Descricao = $"Usuário '{user.Nome}' realizou login",
                     IpUsuario = ip
                 });
-                ModelState.AddModelError(string.Empty, "Login ou senha inválidos");
-                return View("Index");
+
+                return RedirectToAction("Index", "Home");
             }
-
-            HttpContext.Session.SetInt32("idUsuario", user.IdUsuario);
-            HttpContext.Session.SetString("nomeUsuario", user.Nome);
-            HttpContext.Session.SetInt32("IdEmpresa", user.idEmpresa);
-            HttpContext.Session.SetInt32("cargo_id", user.cargo_id);
-
-            _auditoria.Registrar(new RegistrarAuditoriaDto
+            catch (Exception ex)
             {
-                IdEmpresa = user.idEmpresa,
-                IdUsuario = user.IdUsuario,
-                NomeUsuario = user.Nome,
-                Modulo = "AUTH",
-                Acao = "LOGIN",
-                Descricao = $"Usuário '{user.Nome}' realizou login",
-                IpUsuario = ip
-            });
-
-            return RedirectToAction("Index", "Home");
+                return StatusCode(500, new { mensagem = ex.Message, detalhe = ex.StackTrace });
+            }
         }
 
         [HttpGet]
