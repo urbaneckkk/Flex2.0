@@ -49,9 +49,9 @@ namespace WebApplication5.Controllers
                 Auditar("PEDIDO", "CRIAR", $"Pedido #{idGerado} criado");
                 return Ok(new { idPedido = idGerado });
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex) // ← adiciona isso
             {
-                return BadRequest(new { mensagem = ex.Message });
+                return StatusCode(500, new { mensagem = ex.Message });
             }
         }
 
