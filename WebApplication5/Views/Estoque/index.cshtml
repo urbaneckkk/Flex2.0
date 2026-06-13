@@ -18,7 +18,7 @@
             <section class="secao-estoque">
                 <div class="cabecalho-tela">
                     <h2>Controle de Estoque</h2>
-                    <div style="display:flex;align-items:center;gap:1.2rem;">
+                    <div style="display:flex;align-items:center;gap:1.2rem">
                         <a href="/EstoqueHistorico" class="link-historico">
                             <i class="bi bi-clock-history"></i> Movimentações
                         </a>
@@ -48,7 +48,7 @@
                             <tr>
                                 <th>Ações</th>
                                 <th>Status</th>
-                                <th>Risco IA</th>
+                                <!-- <th>Risco IA</th> -->
                                 <th>Produto</th>
                                 <th>Qtde Atual</th>
                                 <th>Est. Mín</th>
@@ -79,7 +79,7 @@
             </div>
             <form id="formInserir">
                 <div class="modal-body">
-                    <div id="mensagemErro" class="alerta-erro" style="display:none;"></div>
+                    <div id="mensagemErro" class="alerta-erro" style="display:none"></div>
                     <div class="stepper">
                         <div class="step active"><div class="step-circle">1</div></div>
                         <div class="step-line"></div>
@@ -181,7 +181,7 @@
             <div class="modal-body">
                 <input type="hidden" id="mov-idProduto">
                 <p class="form-secao">Produto</p>
-                <p id="mov-produto-nome" style="font-size:1.5rem;font-weight:600;color:#1e3c72;margin-bottom:1.6rem;"></p>
+                <p id="mov-produto-nome" style="font-size:1.5rem;font-weight:600;color:#1e3c72;margin-bottom:1.6rem"></p>
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Tipo <span class="obrigatorio">*</span></label>
@@ -220,16 +220,14 @@
             <div class="modal-body">
                 <input type="hidden" id="cfg-idProduto">
                 <p class="form-secao">Produto</p>
-                <p id="cfg-produto-nome" style="font-size:1.5rem;font-weight:600;color:#1e3c72;margin-bottom:1.6rem;"></p>
+                <p id="cfg-produto-nome" style="font-size:1.5rem;font-weight:600;color:#1e3c72;margin-bottom:1.6rem"></p>
 
-                <!-- STEPPER -->
                 <div class="stepper">
                     <div class="step active" id="cfg-step-1"><div class="step-circle">1</div></div>
                     <div class="step-line" id="cfg-line-1"></div>
                     <div class="step" id="cfg-step-2"><div class="step-circle">2</div></div>
                 </div>
 
-                <!-- ETAPA 1: Limites e local -->
                 <div class="etapa ativa" id="cfg-etapa-1">
                     <p class="form-secao">Limites de Estoque</p>
                     <div class="form-grid">
@@ -248,7 +246,6 @@
                     </div>
                 </div>
 
-                <!-- ETAPA 2: Fornecedor -->
                 <div class="etapa" id="cfg-etapa-2">
                     <p class="form-secao">Fornecedor <span style="font-size:1.1rem;color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></p>
                     <div class="wizard-busca">

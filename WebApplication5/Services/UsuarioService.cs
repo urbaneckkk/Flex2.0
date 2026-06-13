@@ -17,9 +17,7 @@ namespace WebApplication5.Services
         }
 
         public IEnumerable<UsuarioModel> Listar(int idEmpresa)
-        {
-            return _repo.Listar(idEmpresa);
-        }
+            => _repo.Listar(idEmpresa);
 
         public void Criar(UsuarioModel usuario)
         {
@@ -29,11 +27,15 @@ namespace WebApplication5.Services
                 usuario.dthCriacao = DateTime.Now;
                 usuario.fAtivo = true;
 
+                // CPF vazio vira null para não disparar unique constraint
+                if (string.IsNullOrWhiteSpace(usuario.CPF))
+                    usuario.CPF = null;
+
                 _repo.Inserir(usuario);
             }
             catch (MySqlException ex) when (ex.Number == 1062)
             {
-                throw new RegraNegocioException("CPF já cadastrado.");
+                throw new RegraNegocioException(ResolverMensagem1062(ex.Message));
             }
         }
 
@@ -44,17 +46,29 @@ namespace WebApplication5.Services
                 if (!string.IsNullOrEmpty(usuario.Senha))
                     usuario.Senha = _password.Hash(usuario.Senha);
 
+                // CPF vazio vira null para não disparar unique constraint
+                if (string.IsNullOrWhiteSpace(usuario.CPF))
+                    usuario.CPF = null;
+
                 _repo.Atualizar(usuario);
             }
             catch (MySqlException ex) when (ex.Number == 1062)
             {
-                throw new RegraNegocioException("CPF já cadastrado.");
+                throw new RegraNegocioException(ResolverMensagem1062(ex.Message));
             }
         }
 
         public void AlterarStatus(int idUsuario)
+            => _repo.AlterarStatus(idUsuario);
+
+        // Identifica qual campo causou o Duplicate Entry
+        private static string ResolverMensagem1062(string errorMessage)
         {
-            _repo.AlterarStatus(idUsuario);
+            var msg = errorMessage.ToLower();
+            if (msg.Contains("cpf")) return "CPF já cadastrado para outro usuário.";
+            if (msg.Contains("login")) return "Login já está em uso. Escolha outro.";
+            if (msg.Contains("email")) return "E-mail já cadastrado para outro usuário.";
+            return "Dado duplicado: já existe um registro com essas informações.";
         }
     }
 }

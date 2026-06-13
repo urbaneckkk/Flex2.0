@@ -1,4 +1,4 @@
-﻿// ===== PRODUTO.JS — FlexGestor (com dados fiscais) =====
+﻿// ===== PRODUTO.JS — FlexGestor =====
 
 const ITENS_POR_PAGINA = 15;
 let lista = [];
@@ -9,10 +9,8 @@ let categorias = [];
 let modoEdicao = null;
 let produtoFiscalAtual = null;
 let paginaAtual = 1;
+let _idStatusAlvo = null;
 
-// ──────────────────────────────────────────
-// FETCH HELPERS
-// ──────────────────────────────────────────
 async function apiGet(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
@@ -32,15 +30,11 @@ async function apiPost(url, body) {
     return res.json().catch(() => null);
 }
 
-// ──────────────────────────────────────────
-// TOAST
-// ──────────────────────────────────────────
 function flexToast(msg, tipo = "sucesso") {
     const cores = { sucesso: "#15803d", erro: "#dc2626", aviso: "#d97706" };
     const icones = { sucesso: "bi-check-circle-fill", erro: "bi-x-circle-fill", aviso: "bi-exclamation-triangle-fill" };
     const t = document.createElement("div");
-    t.style.cssText =
-        `position:fixed;top:2rem;right:2rem;background:${cores[tipo]};color:#fff;
+    t.style.cssText = `position:fixed;top:2rem;right:2rem;background:${cores[tipo]};color:#fff;
         padding:1.2rem 1.8rem;border-radius:.8rem;font-size:1.4rem;font-family:'Segoe UI',sans-serif;
         display:flex;align-items:center;gap:.8rem;box-shadow:0 .6rem 2rem rgba(0,0,0,.2);
         z-index:9999;opacity:0;transform:translateY(-1rem);transition:all .3s ease;max-width:40rem;`;
@@ -53,9 +47,6 @@ function flexToast(msg, tipo = "sucesso") {
     }, 3500);
 }
 
-// ──────────────────────────────────────────
-// CARREGAR DADOS
-// ──────────────────────────────────────────
 async function carregarProdutos() {
     try {
         lista = await apiGet("/Produto/Listar");
@@ -68,28 +59,17 @@ async function carregarProdutos() {
 async function carregarCategorias() {
     try {
         categorias = await apiGet("/CategoriaProduto/Listar");
-
         const ativas = categorias.filter(c => c.fAtivo);
         const opcoes = `<option value="">Selecione...</option>` +
             ativas.map(c => `<option value="${c.idCategoria}">${c.nome}</option>`).join("");
-
-        // por classe (modal novo/edição)
-        document.querySelectorAll(".sel-categoria").forEach(sel => {
-            sel.innerHTML = opcoes;
-        });
-
-        // por ID como fallback
+        document.querySelectorAll(".sel-categoria").forEach(sel => sel.innerHTML = opcoes);
         const porId = document.getElementById("prod-categoria");
         if (porId) porId.innerHTML = opcoes;
-
     } catch (err) {
         console.warn("Categorias:", err.message);
     }
 }
 
-// ──────────────────────────────────────────
-// FILTROS
-// ──────────────────────────────────────────
 function setFiltroStatus(valor) {
     filtroStatus = valor;
     document.querySelectorAll(".btn-status-filtro")
@@ -118,15 +98,8 @@ function aplicarFiltros() {
     renderizarTabela();
 }
 
-// ──────────────────────────────────────────
-// HELPERS
-// ──────────────────────────────────────────
 function fmtMoeda(v) {
     return v != null ? `R$ ${Number(v).toFixed(2).replace(".", ",")}` : "—";
-}
-
-function temDadosFiscais(p) {
-    return !!(p.ncm && p.cfop);
 }
 
 function lerCampo(id) {
@@ -134,40 +107,37 @@ function lerCampo(id) {
     return el ? (el.value.trim() || null) : null;
 }
 
-// ──────────────────────────────────────────
-// TABELA + PAGINAÇÃO
-// ──────────────────────────────────────────
 function renderizarTabela() {
     const tbody = document.querySelector("#tabela-produtos tbody");
     if (!tbody) return;
 
     const total = listaFiltrada.length;
-    const totalPags = Math.ceil(total / ITENS_POR_PAGINA);
     const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
     const pagina = listaFiltrada.slice(inicio, inicio + ITENS_POR_PAGINA);
 
     if (!pagina.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhum produto encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum produto encontrado.</td></tr>`;
         atualizarPaginacao(0);
         return;
     }
 
     tbody.innerHTML = pagina.map(p => {
         const ativo = p.fAtivo === true || p.fAtivo === 1;
-        const temFisc = temDadosFiscais(p);
         const idProd = p.idProduto ?? p.IdProduto;
 
         return `<tr>
             <td class="area-acoes">
-                <button class="btn-acao btn-editar"  title="Editar" onclick="abrirModalEdicao(${idProd})">
+                <button class="btn-acao btn-editar" title="Editar" onclick="abrirModalEdicao(${idProd})">
                     <i class="bi bi-pencil-fill"></i>
                 </button>
+                <!--
                 <button class="btn-acao btn-fiscal" title="Dados Fiscais" onclick="abrirModalFiscal(${idProd})">
                     <i class="bi bi-file-earmark-text-fill"></i>
                 </button>
+                -->
                 <button class="btn-acao ${ativo ? "btn-inativar" : "btn-reativar"}"
                     title="${ativo ? "Inativar" : "Reativar"}"
-                    onclick="alterarStatus(${idProd})">
+                    onclick="abrirModalStatus(${idProd})">
                     <i class="bi bi-${ativo ? "dash-circle-fill" : "check-circle-fill"}"></i>
                 </button>
             </td>
@@ -177,11 +147,6 @@ function renderizarTabela() {
             <td>${p.nomeCategoria ?? "—"}</td>
             <td>${fmtMoeda(p.precoCusto ?? p.PrecoCusto)}</td>
             <td>${fmtMoeda(p.precoVenda ?? p.PrecoVenda)}</td>
-            <td>
-                <span class="status-pill ${temFisc ? "status-ativo" : "status-inativo"}">
-                    ${temFisc ? "Configurado" : "Pendente"}
-                </span>
-            </td>
         </tr>`;
     }).join("");
 
@@ -220,19 +185,15 @@ function atualizarPaginacao(total) {
     ctrl.appendChild(next);
 }
 
-// ──────────────────────────────────────────
-// MODAL PRODUTO — ABRIR / FECHAR
-// ──────────────────────────────────────────
-
-// Abre modal para CRIAR novo produto
 function abrirModal() {
     modoEdicao = null;
-    document.getElementById("form-produto")?.reset();
-    document.querySelector("#modal-produto .modal-header h3").textContent = "Novo Produto";
+    document.querySelector("#modal-produto .modal-header h3").innerHTML =
+        '<i class="bi bi-plus-circle-fill"></i> Novo Produto';
+    document.getElementById("formProduto")?.reset();
+    carregarCategorias();
     document.getElementById("modal-produto").classList.add("open");
 }
 
-// Abre modal para EDITAR produto existente
 function abrirModalEdicao(id) {
     const p = lista.find(x => (x.idProduto ?? x.IdProduto) === id);
     if (!p) return;
@@ -256,81 +217,71 @@ function abrirModalEdicao(id) {
     document.getElementById("modal-produto").classList.add("open");
 }
 
-function abrirModal() {
-    modoEdicao = null;
-    document.querySelector("#modal-produto .modal-header h3").innerHTML =
-        '<i class="bi bi-plus-circle-fill"></i> Novo Produto';
-    document.getElementById("formProduto").reset();
-    carregarCategorias();
-    document.getElementById("modal-produto").classList.add("open");
-}
-
 function fecharModal() {
     document.getElementById("modal-produto")?.classList.remove("open");
     modoEdicao = null;
 }
 
-// ──────────────────────────────────────────
-// MODAL FISCAL — ABRIR / FECHAR
-// ──────────────────────────────────────────
-function abrirModalFiscal(id) {
+// Modal fiscal (comentado — funcionalidade desabilitada temporariamente)
+/*
+function abrirModalFiscal(id) { ... }
+function fecharModalFiscal() { ... }
+*/
+
+// ── Modal: Confirmar Alteração de Status ──
+function abrirModalStatus(id) {
     const p = lista.find(x => (x.idProduto ?? x.IdProduto) === id);
     if (!p) return;
 
-    produtoFiscalAtual = id;
-    document.querySelector("#modal-fiscal .modal-header h3").textContent =
-        `Dados Fiscais — ${p.nome}`;
-
-    // Preenche campos fiscais se já existirem
-    const set = (elId, val) => {
-        const el = document.getElementById(elId);
-        if (el) el.value = val ?? "";
-    };
-
-    set("fiscal-ncm", p.ncm);
-    set("fiscal-cfop", p.cfop);
-    set("fiscal-csosn", p.csosn ?? p.cst);
-    set("fiscal-origem", p.origem ?? "0");
-    set("fiscal-cest", p.cest);
-
-    document.getElementById("modal-fiscal")?.classList.add("open");
-}
-
-function fecharModalFiscal() {
-    document.getElementById("modal-fiscal")?.classList.remove("open");
-    produtoFiscalAtual = null;
-}
-
-// ──────────────────────────────────────────
-// ALTERAR STATUS
-// ──────────────────────────────────────────
-async function alterarStatus(id) {
-    const p = lista.find(x => (x.idProduto ?? x.IdProduto) === id);
-    if (!p) return;
-
+    _idStatusAlvo = id;
     const ativo = p.fAtivo === true || p.fAtivo === 1;
-    const acao = ativo ? "inativar" : "reativar";
+    const acao = ativo ? "Inativar" : "Reativar";
+    const cor = ativo ? "#dc2626" : "#15803d";
+    const icone = ativo ? "bi-dash-circle-fill" : "bi-check-circle-fill";
 
-    if (!confirm(`Deseja ${acao} o produto "${p.nome}"?`)) return;
+    document.getElementById("status-modal-titulo").innerHTML =
+        `<i class="bi ${icone}" style="color:${cor}"></i> ${acao} Produto`;
+    document.getElementById("status-modal-msg").innerHTML =
+        `Deseja <strong>${acao.toLowerCase()}</strong> o produto <strong>"${p.nome}"</strong>?`;
+
+    const btnConfirmar = document.getElementById("btn-confirmar-status");
+    btnConfirmar.style.background = cor;
+    btnConfirmar.innerHTML = `<i class="bi ${icone}"></i> ${acao}`;
+
+    document.getElementById("modal-status-produto").classList.add("open");
+}
+
+function fecharModalStatus() {
+    document.getElementById("modal-status-produto")?.classList.remove("open");
+    _idStatusAlvo = null;
+}
+
+async function confirmarAlterarStatus() {
+    if (!_idStatusAlvo) return;
+    const p = lista.find(x => (x.idProduto ?? x.IdProduto) === _idStatusAlvo);
+    const ativo = p?.fAtivo === true || p?.fAtivo === 1;
+    const acao = ativo ? "inativado" : "reativado";
+
+    const btn = document.getElementById("btn-confirmar-status");
+    btn.disabled = true;
 
     try {
-        await apiPost("/Produto/AlterarStatus", id);
+        await apiPost("/Produto/AlterarStatus", _idStatusAlvo);
+        fecharModalStatus();
         await carregarProdutos();
-        flexToast(`Produto ${acao}do com sucesso!`, "sucesso");
+        flexToast(`Produto ${acao} com sucesso!`, "sucesso");
     } catch (err) {
         flexToast("Erro ao alterar status: " + err.message, "erro");
+    } finally {
+        btn.disabled = false;
     }
 }
 
-// ──────────────────────────────────────────
-// SUBMIT — CRIAR / EDITAR PRODUTO
-// ──────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn-filtro-todos")?.classList.add("ativo-sel");
     carregarProdutos();
     carregarCategorias();
 
-    // Botão salvar produto
     document.getElementById("btnSalvar")?.addEventListener("click", async function () {
         const nome = document.getElementById("nome")?.value?.trim();
         if (!nome) { flexToast("Nome é obrigatório.", "aviso"); return; }
@@ -366,45 +317,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Botão salvar fiscal
-    document.getElementById("btnSalvarFiscal")?.addEventListener("click", async function () {
-        if (!produtoFiscalAtual) return;
-        const ncm = document.getElementById("fiscal-ncm")?.value?.trim();
-        const cfop = document.getElementById("fiscal-cfop")?.value;
-        if (!ncm || ncm.length !== 8) { flexToast("NCM deve ter 8 dígitos.", "aviso"); return; }
-        if (!cfop) { flexToast("Selecione o CFOP.", "aviso"); return; }
-
-        const payload = {
-            IdProduto: produtoFiscalAtual,
-            NCM: ncm,
-            CFOP: cfop,
-            Origem: parseInt(document.getElementById("fiscal-origem")?.value ?? "0"),
-            CSOSN: document.getElementById("fiscal-csosn")?.value || null,
-            CstPIS: document.getElementById("fiscal-cst-pis")?.value || "07",
-            AliqPIS: Number(document.getElementById("fiscal-aliq-pis")?.value || 0.65),
-            CstCOFINS: document.getElementById("fiscal-cst-cofins")?.value || "07",
-            AliqCOFINS: Number(document.getElementById("fiscal-aliq-cofins")?.value || 3.00)
-        };
-
-        this.disabled = true;
-        try {
-            await apiPost("/Produto/SalvarFiscal", payload);
-            flexToast("Dados fiscais salvos!", "sucesso");
-            fecharModalFiscal();
-            await carregarProdutos();
-        } catch (err) {
-            flexToast("Erro ao salvar fiscal: " + err.message, "erro");
-        } finally {
-            this.disabled = false;
-        }
-    });
-
-    // Fechar modais ao clicar fora
-    ["modal-produto", "modal-fiscal"].forEach(id => {
+    ["modal-produto", "modal-status-produto"].forEach(id => {
         document.getElementById(id)?.addEventListener("click", function (e) {
             if (e.target === this) {
                 if (id === "modal-produto") fecharModal();
-                else fecharModalFiscal();
+                else fecharModalStatus();
             }
         });
     });

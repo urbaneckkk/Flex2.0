@@ -1,14 +1,12 @@
 ﻿// ===== FINANCEIRO.JS — FlexGestor =====
 
-// Arrays principais que armazenam os dados vindos da API para contas a receber
-let contasReceber = []; // lista completa
-let contasReceberFiltradas = []; // lista após aplicar filtros
-let filtroReceber = "todos"; // filtro por status (todos, aberto, vencido, pago)
-let filtroReceberTexto = ""; // texto digitado na busca
-let pagReceberAtual = 1; // página atual da tabela
-const PAG_RECEBER = 15; // quantidade de registros por página
+let contasReceber = [];
+let contasReceberFiltradas = [];
+let filtroReceber = "todos";
+let filtroReceberTexto = "";
+let pagReceberAtual = 1;
+const PAG_RECEBER = 15;
 
-// Arrays principais para contas a pagar (mesma lógica do receber)
 let contasPagar = [];
 let contasPagarFiltradas = [];
 let filtroPagar = "todos";
@@ -16,88 +14,75 @@ let filtroPagarTexto = "";
 let pagPagarAtual = 1;
 const PAG_PAGAR = 15;
 
-// Dados auxiliares carregados da API
-let formasPagamento = []; // formas de pagamento disponíveis
-let categorias = []; // categorias financeiras
-let clientes = []; // clientes cadastrados
-let fornecedores = []; // fornecedores cadastrados
+let formasPagamento = [];
+let categorias = [];
+let clientes = [];
+let fornecedores = [];
 
-// Filtros de período (data de vencimento)
 let filtroVencimentoInicioR = null;
 let filtroVencimentoFimR = null;
 let filtroVencimentoInicioP = null;
 let filtroVencimentoFimP = null;
 
-// Configuração de ordenação das tabelas
 let ordemReceber = { campo: 'dthVencimento', asc: true };
 let ordemPagar = { campo: 'dthVencimento', asc: true };
 
-// Função genérica para GET na API
 async function apiGet(url) {
-    const res = await fetch(url); // faz requisição
-    if (!res.ok) throw new Error(`GET ${url} → ${res.status}`); // trata erro HTTP
-    return res.json(); // retorna JSON
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
+    return res.json();
 }
 
-// Função genérica para POST na API
 async function apiPost(url, body) {
     const res = await fetch(url, {
-        method: "POST", // método HTTP
-        headers: { "Content-Type": "application/json" }, // define JSON
-        body: JSON.stringify(body) // envia dados
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
     });
     if (!res.ok) {
-        const t = await res.text().catch(() => ""); // tenta pegar mensagem do backend
-        throw new Error(t || `POST ${url} → ${res.status}`); // lança erro
+        const t = await res.text().catch(() => "");
+        throw new Error(t || `POST ${url} → ${res.status}`);
     }
     return res;
 }
 
-// Função de toast para exibir mensagens ao usuário
 function flexToast(msg, tipo = "sucesso") {
-    const cores = { sucesso: "#15803d", erro: "#dc2626", aviso: "#d97706" }; // cores por tipo
-    const icones = { sucesso: "bi-check-circle-fill", erro: "bi-x-circle-fill", aviso: "bi-exclamation-triangle-fill" }; // ícones
-    const t = document.createElement("div"); // cria elemento
+    const cores = { sucesso: "#15803d", erro: "#dc2626", aviso: "#d97706" };
+    const icones = { sucesso: "bi-check-circle-fill", erro: "bi-x-circle-fill", aviso: "bi-exclamation-triangle-fill" };
+    const t = document.createElement("div");
     t.style.cssText = `position:fixed;top:2rem;right:2rem;background:${cores[tipo]};color:#fff;
         padding:1.2rem 1.8rem;border-radius:.8rem;font-size:1.4rem;font-family:'Segoe UI',sans-serif;
         display:flex;align-items:center;gap:.8rem;box-shadow:0 .6rem 2rem rgba(0,0,0,.2);
-        z-index:9999;opacity:0;transform:translateY(-1rem);transition:all .3s ease;max-width:36rem;`; // estilo
-    t.innerHTML = `<i class="bi ${icones[tipo]}"></i><span>${msg}</span>`; // conteúdo
-    document.body.appendChild(t); // adiciona na tela
-    requestAnimationFrame(() => { t.style.opacity = "1"; t.style.transform = "translateY(0)"; }); // anima entrada
-    setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-1rem)"; setTimeout(() => t.remove(), 350); }, 3200); // remove após tempo
+        z-index:9999;opacity:0;transform:translateY(-1rem);transition:all .3s ease;max-width:36rem;`;
+    t.innerHTML = `<i class="bi ${icones[tipo]}"></i><span>${msg}</span>`;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity = "1"; t.style.transform = "translateY(0)"; });
+    setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-1rem)"; setTimeout(() => t.remove(), 350); }, 3200);
 }
 
-// Formata valor monetário em padrão brasileiro
 function fmt(v) {
     return "R$ " + Number(v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Formata data para pt-BR
 function fmtData(d) {
-    if (!d) return "—"; // fallback
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("pt-BR");
 }
 
-// Define classe visual do status
 function getPillClass(status) {
     if (status === "PAGO") return "pill-pago";
     if (status === "VENCIDO") return "pill-vencido";
     return "pill-aberto";
 }
 
-// Define texto do status
 function getPillLabel(status) {
     if (status === "PAGO") return "Pago";
     if (status === "VENCIDO") return "Vencido";
     return "Aberto";
 }
 
-// Carrega todos os dados do backend
 async function carregarTudo() {
-    console.log("[carregarTudo] iniciando...");
     try {
-        // executa todas as requisições em paralelo
         [contasReceber, contasPagar, formasPagamento, categorias, clientes, fornecedores] = await Promise.all([
             apiGet("/Financeiro/ListarContasReceber"),
             apiGet("/Financeiro/ListarContasPagar"),
@@ -106,73 +91,45 @@ async function carregarTudo() {
             apiGet("/Cliente/Listar"),
             apiGet("/Fornecedor/Listar")
         ]);
-
-        console.log("[carregarTudo] contasReceber:", contasReceber.length);
-
-        atualizarKPIs(); // atualiza indicadores
-        aplicarFiltroReceber(); // aplica filtros
+        atualizarKPIs();
+        aplicarFiltroReceber();
         aplicarFiltroPagar();
-        popularSelects(); // popula dropdowns
+        popularSelects();
         popularSelectsEdicao();
-
-        console.log("[carregarTudo] concluído");
     } catch (err) {
-        console.error("[carregarTudo] ERRO:", err.message);
         flexToast("Erro ao carregar dados: " + err.message, "erro");
     }
 }
 
-// Atualiza os indicadores financeiros da tela
 function atualizarKPIs() {
-    const abertas = contasReceber.filter(c => c.statusAtual !== "PAGO"); // contas abertas
-    const vencidasR = contasReceber.filter(c => c.statusAtual === "VENCIDO"); // vencidas receber
-    const abertoP = contasPagar.filter(c => c.statusAtual !== "PAGO"); // contas abertas pagar
-    const vencidasP = contasPagar.filter(c => c.statusAtual === "VENCIDO"); // vencidas pagar
+    const totalReceber = contasReceber.filter(c => c.statusAtual !== "PAGO").reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
+    const totalVencidoR = contasReceber.filter(c => c.statusAtual === "VENCIDO").reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
+    const totalPagar = contasPagar.filter(c => c.statusAtual !== "PAGO").reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
+    const totalVencidoP = contasPagar.filter(c => c.statusAtual === "VENCIDO").reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
 
-    // calcula totais
-    const totalReceber = abertas.reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
-    const totalVencidoR = vencidasR.reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
-    const totalPagar = abertoP.reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
-    const totalVencidoP = vencidasP.reduce((s, c) => s + Math.max(0, c.valorTotal - c.valorPago), 0);
-
-    // atualiza UI
     document.getElementById("kpi-a-receber").textContent = fmt(totalReceber);
     document.getElementById("kpi-vencido-receber").textContent = fmt(totalVencidoR);
     document.getElementById("kpi-a-pagar").textContent = fmt(totalPagar);
     document.getElementById("kpi-vencido-pagar").textContent = fmt(totalVencidoP);
 }
 
-// Ordena array com base no campo e direção
 function ordenar(arr, ordem) {
     return [...arr].sort((a, b) => {
-        let va = a[ordem.campo], vb = b[ordem.campo]; // valores comparados
-
-        if (typeof va === 'string') { // normaliza string
-            va = va.toLowerCase();
-            vb = (vb ?? '').toLowerCase();
-        }
-
-        if (va === null || va === undefined) return 1;
-        if (vb === null || vb === undefined) return -1;
-
+        let va = a[ordem.campo], vb = b[ordem.campo];
+        if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb ?? '').toLowerCase(); }
+        if (va == null) return 1;
+        if (vb == null) return -1;
         return ordem.asc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
     });
 }
 
-// Teste mínimo — adiciona só isso primeiro para confirmar que funciona
-function abrirModalNovaReceber() {
-    document.getElementById("modal-nova-receber")?.classList.add("open");
-}
-function fecharModalNovaReceber() {
-    document.getElementById("modal-nova-receber")?.classList.remove("open");
-}
 function mudarAba(aba) {
     document.querySelectorAll(".fin-aba-btn").forEach(b => b.classList.remove("ativa"));
     document.getElementById(`aba-btn-${aba}`)?.classList.add("ativa");
     document.getElementById("painel-receber").style.display = aba === "receber" ? "" : "none";
     document.getElementById("painel-pagar").style.display = aba === "pagar" ? "" : "none";
 }
-// ── Filtros de período ────────────────────────────────────────────────────
+
 function setFiltroPeriodo(tipo, extremo, valor) {
     if (tipo === "receber") {
         if (extremo === "inicio") filtroVencimentoInicioR = valor || null;
@@ -187,29 +144,17 @@ function setFiltroPeriodo(tipo, extremo, valor) {
 
 function setOrdem(tipo, campo) {
     if (tipo === "receber") {
-        if (ordemReceber.campo === campo) ordemReceber.asc = !ordemReceber.asc;
-        else ordemReceber = { campo, asc: true };
+        ordemReceber = ordemReceber.campo === campo ? { campo, asc: !ordemReceber.asc } : { campo, asc: true };
         aplicarFiltroReceber();
     } else {
-        if (ordemPagar.campo === campo) ordemPagar.asc = !ordemPagar.asc;
-        else ordemPagar = { campo, asc: true };
+        ordemPagar = ordemPagar.campo === campo ? { campo, asc: !ordemPagar.asc } : { campo, asc: true };
         aplicarFiltroPagar();
     }
 }
 
-// ── Abas ──────────────────────────────────────────────────────────────────
-function mudarAba(aba) {
-    document.querySelectorAll(".fin-aba-btn").forEach(b => b.classList.remove("ativa"));
-    document.getElementById(`aba-btn-${aba}`)?.classList.add("ativa");
-    document.getElementById("painel-receber").style.display = aba === "receber" ? "" : "none";
-    document.getElementById("painel-pagar").style.display = aba === "pagar" ? "" : "none";
-}
-
-// ── Filtros ───────────────────────────────────────────────────────────────
 function setFiltroReceber(valor) {
     filtroReceber = valor;
-    document.querySelectorAll("[id^='fr-']").forEach(b =>
-        b.classList.remove("sel-todos", "sel-aberto", "sel-vencido", "sel-pago"));
+    document.querySelectorAll("[id^='fr-']").forEach(b => b.classList.remove("sel-todos", "sel-aberto", "sel-vencido", "sel-pago"));
     document.getElementById(`fr-${valor}`)?.classList.add(`sel-${valor}`);
     pagReceberAtual = 1;
     aplicarFiltroReceber();
@@ -217,8 +162,7 @@ function setFiltroReceber(valor) {
 
 function setFiltroPagar(valor) {
     filtroPagar = valor;
-    document.querySelectorAll("[id^='fp-']").forEach(b =>
-        b.classList.remove("sel-todos", "sel-aberto", "sel-vencido", "sel-pago"));
+    document.querySelectorAll("[id^='fp-']").forEach(b => b.classList.remove("sel-todos", "sel-aberto", "sel-vencido", "sel-pago"));
     document.getElementById(`fp-${valor}`)?.classList.add(`sel-${valor}`);
     pagPagarAtual = 1;
     aplicarFiltroPagar();
@@ -241,8 +185,7 @@ function aplicarFiltroReceber() {
     contasReceberFiltradas = contasReceber.filter(c => {
         const st = (c.statusAtual ?? "ABERTO").toUpperCase();
         if (filtroReceber !== "todos" && st !== filtroReceber.toUpperCase()) return false;
-        if (termo && !(c.nomeCliente ?? "").toLowerCase().includes(termo) &&
-            !(c.descricao ?? "").toLowerCase().includes(termo)) return false;
+        if (termo && !(c.nomeCliente ?? "").toLowerCase().includes(termo) && !(c.descricao ?? "").toLowerCase().includes(termo)) return false;
         if (filtroVencimentoInicioR && new Date(c.dthVencimento) < new Date(filtroVencimentoInicioR)) return false;
         if (filtroVencimentoFimR && new Date(c.dthVencimento) > new Date(filtroVencimentoFimR + "T23:59:59")) return false;
         return true;
@@ -256,8 +199,7 @@ function aplicarFiltroPagar() {
     contasPagarFiltradas = contasPagar.filter(c => {
         const st = (c.statusAtual ?? "ABERTO").toUpperCase();
         if (filtroPagar !== "todos" && st !== filtroPagar.toUpperCase()) return false;
-        if (termo && !(c.nomeFornecedor ?? "").toLowerCase().includes(termo) &&
-            !(c.descricao ?? "").toLowerCase().includes(termo)) return false;
+        if (termo && !(c.nomeFornecedor ?? "").toLowerCase().includes(termo) && !(c.descricao ?? "").toLowerCase().includes(termo)) return false;
         if (filtroVencimentoInicioP && new Date(c.dthVencimento) < new Date(filtroVencimentoInicioP)) return false;
         if (filtroVencimentoFimP && new Date(c.dthVencimento) > new Date(filtroVencimentoFimP + "T23:59:59")) return false;
         return true;
@@ -266,7 +208,6 @@ function aplicarFiltroPagar() {
     renderizarTabelaPagar();
 }
 
-// ── Renderizar tabelas ────────────────────────────────────────────────────
 function renderizarTabelaReceber() {
     const tbody = document.querySelector("#tabela-receber tbody");
     if (!tbody) return;
@@ -274,7 +215,6 @@ function renderizarTabelaReceber() {
     const inicio = (pagReceberAtual - 1) * PAG_RECEBER;
     const pagina = contasReceberFiltradas.slice(inicio, inicio + PAG_RECEBER);
 
-    // badge aba
     const vencidas = contasReceber.filter(c => c.statusAtual === "VENCIDO").length;
     const badge = document.getElementById("badge-vencido-receber");
     if (badge) { badge.textContent = vencidas; badge.classList.toggle("visivel", vencidas > 0); }
@@ -381,50 +321,33 @@ function renderizarPaginacao(tipo, total) {
     ctrl.appendChild(next);
 }
 
-// ── Popula selects ────────────────────────────────────────────────────────
 function popularSelects() {
-    // clientes
     const optsClientes = `<option value="">Selecione...</option>` +
         clientes.map(c => `<option value="${c.idCliente}">${c.nome}</option>`).join("");
-    ["nr-cliente", "er-cliente"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = optsClientes;
-    });
+    ["nr-cliente", "er-cliente"].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = optsClientes; });
 
-    // formas pagamento
     const optsFP = formasPagamento.map(f => `<option value="${f.idFormaPagamento}">${f.nome}</option>`).join("");
-    ["rp-forma", "pc-forma"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = optsFP;
-    });
+    ["rp-forma", "pc-forma"].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = optsFP; });
 
-    // categorias entrada (receber)
     const catEntrada = categorias.filter(c => c.Tipo === 1 || c.tipo === 1);
-    const optsCatR = catEntrada.map(c => `<option value="${c.idCategoriaFinanceira}">${c.nome}</option>`).join("");
     const rpCat = document.getElementById("rp-categoria");
-    if (rpCat) rpCat.innerHTML = optsCatR;
+    if (rpCat) rpCat.innerHTML = catEntrada.map(c => `<option value="${c.idCategoriaFinanceira}">${c.nome}</option>`).join("");
 
-    // categorias saída (pagar)
     const catSaida = categorias.filter(c => c.Tipo === 2 || c.tipo === 2);
-    const optsCatP = catSaida.map(c => `<option value="${c.idCategoriaFinanceira}">${c.nome}</option>`).join("");
     const pcCat = document.getElementById("pc-categoria");
-    if (pcCat) pcCat.innerHTML = optsCatP;
+    if (pcCat) pcCat.innerHTML = catSaida.map(c => `<option value="${c.idCategoriaFinanceira}">${c.nome}</option>`).join("");
 }
 
 function popularSelectsEdicao() {
     const optsFornecedor = `<option value="">Nenhum</option>` +
         fornecedores.map(f => `<option value="${f.idFornecedor}">${f.nomeFantasia}</option>`).join("");
-    ["np-fornecedor", "ep-fornecedor"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = optsFornecedor;
-    });
+    ["np-fornecedor", "ep-fornecedor"].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = optsFornecedor; });
 }
 
-// ── Modal helper ──────────────────────────────────────────────────────────
 function abrirModal(id) { document.getElementById(id)?.classList.add("open"); }
 function fecharModal(id) { document.getElementById(id)?.classList.remove("open"); }
 
-// ── Nova Conta a Receber ──────────────────────────────────────────────────
+// ── Nova Conta a Receber
 function abrirModalNovaReceber() { abrirModal("modal-nova-receber"); }
 function fecharModalNovaReceber() { fecharModal("modal-nova-receber"); }
 
@@ -443,7 +366,7 @@ async function salvarNovaReceber() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Receber Pagamento ─────────────────────────────────────────────────────
+// ── Receber Pagamento
 let _idContaReceber = null;
 function abrirModalReceberPagamento(id) {
     _idContaReceber = id;
@@ -470,7 +393,7 @@ async function confirmarReceber() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Alterar Vencimento Receber ────────────────────────────────────────────
+// ── Vencimento Receber
 let _idVencReceber = null;
 function abrirModalVencReceber(id) {
     _idVencReceber = id;
@@ -492,7 +415,7 @@ async function confirmarVencReceber() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Excluir Receber ───────────────────────────────────────────────────────
+// ── Excluir Receber
 let _idExcluirReceber = null;
 function abrirModalExcluirReceber(id) { _idExcluirReceber = id; abrirModal("modal-excluir-receber"); }
 function fecharModalExcluirReceber() { fecharModal("modal-excluir-receber"); }
@@ -507,7 +430,7 @@ async function confirmarExcluirReceber() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Editar Receber ────────────────────────────────────────────────────────
+// ── Editar Receber
 function abrirModalEditarReceber(id) {
     const c = contasReceber.find(x => x.idContaReceber === id);
     if (!c) return;
@@ -537,7 +460,7 @@ async function salvarEditarReceber() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Nova Conta a Pagar ────────────────────────────────────────────────────
+// ── Nova Conta a Pagar
 function abrirModalNovaPagar() { abrirModal("modal-nova-pagar"); }
 function fecharModalNovaPagar() { fecharModal("modal-nova-pagar"); }
 
@@ -556,7 +479,7 @@ async function salvarNovaPagar() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Pagar Conta ───────────────────────────────────────────────────────────
+// ── Pagar Conta
 let _idContaPagar = null;
 function abrirModalPagarConta(id) {
     _idContaPagar = id;
@@ -583,7 +506,7 @@ async function confirmarPagar() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Alterar Vencimento Pagar ──────────────────────────────────────────────
+// ── Vencimento Pagar
 let _idVencPagar = null;
 function abrirModalVencPagar(id) {
     _idVencPagar = id;
@@ -605,7 +528,7 @@ async function confirmarVencPagar() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Excluir Pagar ─────────────────────────────────────────────────────────
+// ── Excluir Pagar
 let _idExcluirPagar = null;
 function abrirModalExcluirPagar(id) { _idExcluirPagar = id; abrirModal("modal-excluir-pagar"); }
 function fecharModalExcluirPagar() { fecharModal("modal-excluir-pagar"); }
@@ -620,7 +543,7 @@ async function confirmarExcluirPagar() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Editar Pagar ──────────────────────────────────────────────────────────
+// ── Editar Pagar
 function abrirModalEditarPagar(id) {
     const c = contasPagar.find(x => x.idContaPagar === id);
     if (!c) return;
@@ -650,41 +573,65 @@ async function salvarEditarPagar() {
     } catch (err) { flexToast(err.message, "erro"); }
 }
 
-// ── Histórico ─────────────────────────────────────────────────────────────
+// ── Histórico (melhorado)
 async function abrirHistorico(tipo, id) {
     const url = tipo === "receber"
         ? `/Financeiro/HistoricoReceber?idContaReceber=${id}`
         : `/Financeiro/HistoricoPagar?idContaPagar=${id}`;
+
+    const tituloEl = document.getElementById("hist-titulo");
+    if (tituloEl) tituloEl.textContent = tipo === "receber" ? "Histórico — Conta a Receber" : "Histórico — Conta a Pagar";
+
+    const corpo = document.getElementById("hist-corpo");
+    if (corpo) corpo.innerHTML = `<div class="empty-state"><i class="bi bi-hourglass-split"></i> Carregando...</div>`;
+
+    abrirModal("modal-historico");
+
     try {
         const lista = await apiGet(url);
-        const corpo = document.getElementById("hist-corpo");
-        if (corpo) {
-            corpo.innerHTML = lista.length
-                ? `<table style="width:100%;border-collapse:collapse">
-                    <thead><tr>
-                        <th style="text-align:left;padding:.8rem;border-bottom:2px solid #eee">Data</th>
-                        <th style="text-align:left;padding:.8rem;border-bottom:2px solid #eee">Valor</th>
-                        <th style="text-align:left;padding:.8rem;border-bottom:2px solid #eee">Obs</th>
-                    </tr></thead>
-                    <tbody>${lista.map(h => `<tr>
-                        <td style="padding:.8rem;border-bottom:1px solid #f0f2f5">${fmtData(h.dthPagamento)}</td>
-                        <td style="padding:.8rem;border-bottom:1px solid #f0f2f5">${fmt(h.valorPago)}</td>
-                        <td style="padding:.8rem;border-bottom:1px solid #f0f2f5">${h.observacao ?? "—"}</td>
-                    </tr>`).join("")}</tbody>
-                  </table>`
-                : `<p class="empty-state">Nenhum registro.</p>`;
+        if (!corpo) return;
+
+        if (!lista.length) {
+            corpo.innerHTML = `<div class="empty-state">Nenhum pagamento registrado.</div>`;
+            return;
         }
-        abrirModal("modal-historico");
-    } catch (err) { flexToast(err.message, "erro"); }
+
+        const totalPago = lista.reduce((s, h) => s + (h.valorPago ?? 0), 0);
+
+        corpo.innerHTML = `
+            <div class="hist-resumo">
+                <span class="hist-resumo-label">Total pago</span>
+                <span class="hist-resumo-valor">${fmt(totalPago)}</span>
+            </div>
+            <table class="table-fin" style="margin-top:1.2rem">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lista.map(h => `
+                        <tr>
+                            <td>${fmtData(h.dthPagamento)}</td>
+                            <td class="valor-entrada">${fmt(h.valorPago)}</td>
+                            <td>${h.observacao ?? "—"}</td>
+                        </tr>`).join("")}
+                </tbody>
+            </table>`;
+    } catch (err) {
+        if (corpo) corpo.innerHTML = `<div class="empty-state">Erro ao carregar histórico.</div>`;
+        flexToast(err.message, "erro");
+    }
 }
 function fecharHistorico() { fecharModal("modal-historico"); }
 
-// ── Exportar ──────────────────────────────────────────────────────────────
-function exportar(tipo, formato) {
-    window.open(`/Financeiro/Exportar${formato === "excel" ? "Excel" : "Pdf"}?tipo=${tipo}`, "_blank");
-}
+// ── Exportar (desabilitado temporariamente)
+// function exportar(tipo, formato) {
+//     window.open(`/Financeiro/Exportar${formato === "excel" ? "Excel" : "Pdf"}?tipo=${tipo}`, "_blank");
+// }
 
-// ── DOMContentLoaded ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("fr-todos")?.classList.add("sel-todos");
     document.getElementById("fp-todos")?.classList.add("sel-todos");

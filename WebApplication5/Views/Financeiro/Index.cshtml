@@ -53,14 +53,15 @@
                         <i class="bi bi-arrow-up-circle-fill"></i> Contas a Pagar
                         <span class="fin-aba-badge" id="badge-vencido-pagar">0</span>
                     </button>
-                    <div style="display:flex;gap:.8rem;margin-left:auto;align-items:center">
+                    <!-- Botões de exportação desabilitados temporariamente -->
+                    <!-- <div style="display:flex;gap:.8rem;margin-left:auto;align-items:center">
                         <button class="btn-nova-conta" style="background:#15803d" onclick="exportar('receber','excel')">
                             <i class="bi bi-file-earmark-excel-fill"></i> Excel
                         </button>
                         <button class="btn-nova-conta" style="background:#dc2626" onclick="exportar('receber','pdf')">
                             <i class="bi bi-file-earmark-pdf-fill"></i> PDF
                         </button>
-                    </div>
+                    </div> -->
                 </div>
 
                 <!-- ABA RECEBER -->
@@ -269,7 +270,7 @@
             <div class="modal-footer">
                 <input type="hidden" id="excluir-r-id">
                 <button type="button" class="btn-secundario" onclick="fecharModalExcluirReceber()">Cancelar</button>
-                <button type="button" id="btn-confirmar-excluir-r" class="btn-primario vermelho" onclick="confirmarExcluirReceber()">
+                <button type="button" class="btn-primario vermelho" onclick="confirmarExcluirReceber()">
                     <i class="bi bi-trash-fill"></i> Excluir
                 </button>
             </div>
@@ -391,7 +392,7 @@
             <div class="modal-footer">
                 <input type="hidden" id="excluir-p-id">
                 <button type="button" class="btn-secundario" onclick="fecharModalExcluirPagar()">Cancelar</button>
-                <button type="button" id="btn-confirmar-excluir-p" class="btn-primario vermelho" onclick="confirmarExcluirPagar()">
+                <button type="button" class="btn-primario vermelho" onclick="confirmarExcluirPagar()">
                     <i class="bi bi-trash-fill"></i> Excluir
                 </button>
             </div>
@@ -473,10 +474,10 @@
     </div>
 
     <!-- MODAL: HISTÓRICO -->
-    <div class="modal" id="modal-historico">W
-        <div class="modal-content" style="width:46rem">
+    <div class="modal" id="modal-historico">
+        <div class="modal-content" style="width:52rem">
             <div class="modal-header">
-                <h3><i class="bi bi-clock-history"></i> <span id="hist-titulo">Histórico</span></h3>
+                <h3><i class="bi bi-clock-history"></i> <span id="hist-titulo">Histórico de Pagamentos</span></h3>
                 <button class="btn-fechar-modal" onclick="fecharHistorico()">&times;</button>
             </div>
             <div class="modal-body" id="hist-corpo"></div>
