@@ -282,10 +282,6 @@ function fecharDetalhe() {
 // Inicialização da tela
 document.addEventListener("DOMContentLoaded", () => {
 
-    // Permite fechar modal clicando fora
-    document.getElementById("modal-detalhe-log")?.addEventListener("click", function (e) {
-        if (e.target === this) fecharDetalhe();
-    });
 
     // Define filtro padrão: últimos 7 dias
     const hoje = new Date();

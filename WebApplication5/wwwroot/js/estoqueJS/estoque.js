@@ -446,13 +446,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("ins-btn-salvar")?.addEventListener("click", salvarInsercao);
 
-    ["modal-inserir", "modal-movimentacao", "modal-configuracao"].forEach(id => {
-        document.getElementById(id)?.addEventListener("click", function (e) {
-            if (e.target === this) {
-                if (id === "modal-inserir") fecharModalInserir();
-                else if (id === "modal-movimentacao") fecharModalMovimentacao();
-                else fecharModalConfiguracao();
-            }
-        });
-    });
 });

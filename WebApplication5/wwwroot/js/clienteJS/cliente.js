@@ -108,9 +108,9 @@ function renderizarTabela() {
                 <td><span class="status-pill status-${c.fAtivo ? 'ativo' : 'inativo'}">${c.fAtivo ? 'Ativo' : 'Inativo'}</span></td>
                 <td>${tipo}</td>
                 <td>${c.nome ?? "—"}</td>
-                <td>${c.cpfCNPJ || "—"}</td>
+<td>${formatarCPFouCNPJ(c.cpfCNPJ)}</td>
                 <td>${c.email || "—"}</td>
-                <td>${c.telefone || "—"}</td>
+<td>${formatarTelefone(c.telefone)}</td>
                 <td>${saldo}</td>
             </tr>`;
         }).join("");
@@ -315,9 +315,9 @@ function montarPayloadEdicao() {
 
     const campos = {
         nome: lerCampo("edit-nome"),
-        cpfCNPJ: lerCampo("edit-doc"),
+        cpfCNPJ: (lerCampo("edit-doc") ?? "").replace(/\D/g, ""),
         email: lerCampo("edit-email"),
-        telefone: lerCampo("edit-telefone"),
+        telefone: (lerCampo("edit-telefone") ?? "").replace(/\D/g, ""),
         observacao: lerCampo("edit-observacao"),
         saldoDevedor: lerCampo("edit-saldo"),
         genero: tipo === "PF" ? lerCampo("edit-genero") : undefined,
@@ -403,9 +403,9 @@ async function abrirModalEdicao(id) {
 
     const c = clienteEmEdicao;
     setCampo("edit-nome", c.nome);
-    setCampo("edit-doc", c.cpfCNPJ);
+    setCampo("edit-doc", formatarCPFouCNPJ(c.cpfCNPJ));
     setCampo("edit-email", c.email);
-    setCampo("edit-telefone", c.telefone);
+    setCampo("edit-telefone", formatarTelefone(c.telefone));
     setCampo("edit-tipocliente", c.tipoCliente_id);
     setCampo("edit-observacao", c.observacao);
     setCampo("edit-genero", c.genero);
@@ -483,16 +483,6 @@ function confirmarDeletar(id) {
     );
 }
 
-// ──────────────────────────────────────────
-// FECHAR AO CLICAR FORA
-// ──────────────────────────────────────────
-["modal-novo-cliente", "modal-edicao", "modal-confirmar"].forEach(id => {
-    document.getElementById(id)?.addEventListener("click", function (e) {
-        if (e.target !== this) return;
-        if (id === "modal-novo-cliente") fecharModal();
-        else if (id === "modal-edicao") fecharModalEdicao();
-    });
-});
 
 document.getElementById("btn-abrir-modal")?.addEventListener("click", abrirModal);
 document.getElementById("btn-fechar-novo")?.addEventListener("click", fecharModal);

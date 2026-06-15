@@ -648,11 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ["modal-editar-pagar", fecharModalEditarPagar],
         ["modal-excluir-pagar", fecharModalExcluirPagar],
         ["modal-historico", fecharHistorico],
-    ].forEach(([id, fn]) => {
-        document.getElementById(id)?.addEventListener("click", function (e) {
-            if (e.target === this) fn();
-        });
-    });
+    ]
 
     carregarTudo();
 });

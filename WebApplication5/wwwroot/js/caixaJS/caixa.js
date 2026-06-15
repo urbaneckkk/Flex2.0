@@ -323,7 +323,7 @@ function renderizarLancamentos() {
     };
 
     tbody.innerHTML = pagina.map(l => {
-        const cfg = TIPO_CONFIG[(l.tipo || "").toUpperCase()] || { classe: "tipo-manual", label: l.tipo || "—" };
+        const cfg = TIPO_CONFIG[(l.tipoLancamento || "").toUpperCase()] || { classe: "tipo-manual", label: l.tipoLancamento || "—" };
         const entrada = isEntrada(l);
         return `
         <tr>
@@ -555,7 +555,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const payload = {
-            Tipo: tipoLancamentoAtual,
+            TipoLancamento: tipoLancamentoAtual,
             Valor: valor,
             Descricao: document.getElementById("lanc-descricao").value || null,
             IdCategoriaFinanceira: _categoriaSelecionada || null,
@@ -563,7 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         try {
-            await apiPost("/Caixa/Lancamento", payload);
+            await apiPost("/Caixa/Lancar", payload);
             fecharModalLancamento();
             flexToast("Lançamento registrado!", "sucesso");
             lancamentos = await apiGet("/Caixa/Lancamentos").catch(() => []);
@@ -571,7 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
             atualizarBreakdown();
             renderizarLancamentos();
         } catch (err) {
-            flexToast("Erro ao lançar: " + err.message, "erro");
+            flexToast(err.message, "erro");
         }
     });
 });
@@ -918,12 +918,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ["modal-receber-conta", fecharModalReceberConta],
         ["modal-alterar-vencimento", fecharModalAlterarVencimento],
     ];
-
-    modais.forEach(([id, fn]) => {
-        document.getElementById(id)?.addEventListener("click", function (e) {
-            if (e.target === this) fn();
-        });
-    });
 
     // Garante aba inicial
     mudarAba("lancamentos");

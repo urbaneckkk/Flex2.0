@@ -327,12 +327,6 @@ function abrirModalNovoPedido() {
 
     atualizarResumo();
     mudarTabPedido("dados");
-
-    // Popula formas de pagamento se ainda não carregou
-    if (!formasPagamentoCache.length) carregarFormasPagamento();
-    if (!produtosCache.length) carregarProdutos();
-    if (!clientesCache.length) carregarClientes();
-
     document.getElementById("modal-pedido").classList.add("open");
 }
 
@@ -667,8 +661,10 @@ async function salvarPedido() {
     try {
         if (_pedidoEmEdicao) {
             // Edição
+            const pedidoAtual = todosPedidos.find(p => p.idPedido === _pedidoEmEdicao);
             await apiPost("/Pedido/Editar", {
                 IdPedido: _pedidoEmEdicao,
+                StatusPedidoId: pedidoAtual?.statusPedidoId || 1,
                 Desconto: descTotal,
                 ValorFrete: 0,
                 Observacao: document.getElementById("pedido-obs").value || null,
@@ -883,14 +879,16 @@ async function confirmarCancelarPedido() {
         fecharModalCancelar();
         await carregarPedidos();
     } catch (err) {
-        flexToast("Erro ao cancelar: " + err.message, "erro");
+        flexToast(err.message, "erro");
     }
 }
 
-// ════════════════════════════════════════════
-// FECHAR MODAIS AO CLICAR FORA
-// ════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
+    carregarPedidos();
+    carregarProdutos();
+    carregarClientes();
+    carregarFormasPagamento();
+
     [
         ["modal-pedido", fecharModalPedido],
         ["modal-detalhe-pedido", fecharModalDetalhe],

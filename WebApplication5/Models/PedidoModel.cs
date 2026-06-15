@@ -50,8 +50,8 @@
         public decimal valorFrete { get; set; }
         public DateTime dthCriacao { get; set; }
         public int idEmpresa { get; set; }
+        public int totalItens { get; set; }
     }
-
     public class PedidoStatusHistoricoDto
     {
         public int idHistorico { get; set; }
@@ -123,5 +123,10 @@
         public decimal ValorTotal { get; set; }
         public decimal ValorRestante { get; set; }
         public bool Concluido { get; set; }
+    }
+    public class CancelarPedidoDto
+    {
+        public int IdPedido { get; set; }
+        public string? Observacao { get; set; }
     }
 }

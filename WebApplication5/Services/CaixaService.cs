@@ -53,6 +53,17 @@ namespace WebApplication5.Services
             if (dto.Valor <= 0) throw new InvalidOperationException("Valor deve ser maior que zero.");
             var caixa = _repo.BuscarAberto(idEmpresa)
                 ?? throw new InvalidOperationException("Nenhum caixa aberto.");
+
+            dto.IdFormaPagamento ??= 1;
+
+            if (dto.IdCategoriaFinanceira == null)
+            {
+                var tipoEsperado = dto.TipoLancamento == "SUPRIMENTO" ? 1 : 2;
+                var cat = ListarCategorias(idEmpresa).FirstOrDefault(c => c.Tipo == tipoEsperado)
+                    ?? throw new InvalidOperationException("Nenhuma categoria financeira cadastrada para este tipo de lançamento.");
+                dto.IdCategoriaFinanceira = cat.idCategoriaFinanceira;
+            }
+
             return _repo.Lancar(caixa.idCaixa, idEmpresa, idUsuario, dto);
         }
 

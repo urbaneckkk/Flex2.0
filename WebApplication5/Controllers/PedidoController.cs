@@ -64,12 +64,12 @@ namespace WebApplication5.Controllers
         }
 
         [HttpPost]
-        public IActionResult Cancelar([FromBody] int idPedido)
+        public IActionResult Cancelar([FromBody] CancelarPedidoDto dto)
         {
             var r = VerificarSessaoApi(); if (r != null) return r;
             var idUsuario = HttpContext.Session.GetInt32("idUsuario")!.Value;
-            _service.Cancelar(idPedido, idUsuario);
-            Auditar("PEDIDO", "CANCELAR", $"Pedido #{idPedido} cancelado");
+            _service.Cancelar(dto.IdPedido, idUsuario);
+            Auditar("PEDIDO", "CANCELAR", $"Pedido #{dto.IdPedido} cancelado");
             return Ok();
         }
 

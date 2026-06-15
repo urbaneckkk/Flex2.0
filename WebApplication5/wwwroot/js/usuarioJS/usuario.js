@@ -210,10 +210,10 @@ function renderizarTabela() {
                 </td>
                 <td><span class="status-pill status-${u.fAtivo ? 'ativo' : 'inativo'}">${u.fAtivo ? 'Ativo' : 'Inativo'}</span></td>
                 <td>${u.nome}</td>
-                <td>${u.cpf || "—"}</td>
+<td>${formatarCPF(u.cpf)}</td>
                 <td>${u.login}</td>
                 <td>${u.email || "—"}</td>
-                <td>${u.telefone || "—"}</td>
+<td>${formatarTelefone(u.telefone)}</td>
             </tr>
         `).join("");
     }
@@ -265,25 +265,6 @@ function criarBtnPagina(label, disabled, onClick) {
     return btn;
 }
 
-// Formata CPF para exibição visual
-function formatarCPF(digits) {
-    const d = String(digits || "").replace(/\D/g, "").substring(0, 11);
-    return d
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-        .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
-}
-
-// Formata telefone para padrão brasileiro
-function formatarTelefone(digits) {
-    const d = String(digits || "").replace(/\D/g, "").substring(0, 11);
-
-    if (d.length > 10) return d.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-    if (d.length > 6) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-    if (d.length > 2) return d.replace(/(\d{2})(\d{0,5})/, "($1) $2");
-
-    return d.length > 0 ? `(${d}` : d;
-}
 
 // Controla estado de loading dos botões
 function setBotaoCarregando(btnEl, carregando) {
@@ -361,16 +342,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("select-tipo-filtro")
         ?.addEventListener("change", filtrarTabela);
 
-    // Fechar modais ao clicar fora
-    ["modal-novo-usuario", "modal-edicao", "modal-confirmar"].forEach(id => {
-        document.getElementById(id)?.addEventListener("click", function (e) {
-            if (e.target === this) {
-                if (id === "modal-novo-usuario") fecharModal();
-                else if (id === "modal-edicao") fecharModalEdicao();
-                else fecharModalConfirmar();
-            }
-        });
-    });
+    aplicarMascaraCPF(document.getElementById("novo-cpf"));
+    aplicarMascaraTelefone(document.getElementById("novo-telefone"));
+    aplicarMascaraCPF(document.getElementById("edit-cpf"));
+    aplicarMascaraTelefone(document.getElementById("edit-telefone"));
 
     // Submit novo usuário
     document.getElementById("form-usuario")?.addEventListener("submit", async function (e) {

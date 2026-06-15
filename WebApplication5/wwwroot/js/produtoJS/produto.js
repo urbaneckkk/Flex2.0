@@ -317,12 +317,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    ["modal-produto", "modal-status-produto"].forEach(id => {
-        document.getElementById(id)?.addEventListener("click", function (e) {
-            if (e.target === this) {
-                if (id === "modal-produto") fecharModal();
-                else fecharModalStatus();
-            }
-        });
-    });
 });

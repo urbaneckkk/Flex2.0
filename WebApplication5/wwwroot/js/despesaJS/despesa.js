@@ -218,13 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (acaoConfirmar) acaoConfirmar();
     });
 
-    document.getElementById('modal-despesa')?.addEventListener('click', function (e) {
-        if (e.target === this) fecharModal();
-    });
-    document.getElementById('modal-confirmar')?.addEventListener('click', function (e) {
-        if (e.target === this) fecharModalConfirmar();
-    });
-
     setFiltroStatus('ativo');
     carregar();
 });

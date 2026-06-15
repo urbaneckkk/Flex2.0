@@ -144,6 +144,35 @@ function validarCNPJ(cnpj) {
     return r === +d[1];
 }
 
+// ──────────────────────────────────────────
+// FORMATADORES PARA EXIBIÇÃO
+// ──────────────────────────────────────────
+function formatarCPF(v) {
+    const d = String(v || "").replace(/\D/g, "").substring(0, 11);
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    return d || "—";
+}
+
+function formatarCNPJ(v) {
+    const d = String(v || "").replace(/\D/g, "").substring(0, 14);
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    return d || "—";
+}
+
+function formatarCPFouCNPJ(v) {
+    const d = String(v || "").replace(/\D/g, "");
+    if (d.length === 14) return formatarCNPJ(d);
+    if (d.length === 11) return formatarCPF(d);
+    return v || "—";
+}
+
+function formatarTelefone(v) {
+    const d = String(v || "").replace(/\D/g, "").substring(0, 11);
+    if (d.length === 11) return d.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return v || "—";
+}
+
 function validarCampoCNPJ(inputEl) {
     const v = String(inputEl?.value ?? "").replace(/\D/g, "");
     if (campoVazio(inputEl?.value)) {

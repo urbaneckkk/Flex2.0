@@ -21,7 +21,6 @@ namespace WebApplication5.Controllers
         public IActionResult Index() => View();
 
         [HttpPost]
-        [HttpPost]
         public IActionResult Entrar(string login, string senha, string cnpj)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();

@@ -75,7 +75,7 @@ namespace WebApplication5.Repositories
                     p_idCaixa = idCaixa,
                     p_idEmpresa = idEmpresa,
                     p_idUsuario = idUsuario,
-                    p_idFormaPagamento = dto.IdFormaPagamento,
+                    p_idFormaPagamento = dto.IdFormaPagamento ?? 1,
                     p_idCategoriaFinanceira = dto.IdCategoriaFinanceira,
                     p_valor = dto.Valor,
                     p_descricao = dto.Descricao,

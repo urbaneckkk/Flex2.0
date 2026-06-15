@@ -116,7 +116,7 @@ function renderizar() {
     const pagina = lista.slice(inicio, inicio + PAG);
 
     if (!pagina.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhuma movimentação encontrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Nenhuma movimentação encontrada.</td></tr>`;
         renderizarPaginacao(0);
         return;
     }
@@ -139,7 +139,6 @@ function renderizar() {
             <td style="text-align:right">
                 <strong class="${cfg.qtdClasse}">${cfg.prefixo}${h.quantidade ?? h.Quantidade ?? 0}</strong>
             </td>
-            <td>${h.lote || '—'}</td>
             <td>${h.nomeUsuario ?? h.NomeUsuario ?? '—'}</td>
             <td>${h.motivo ?? h.observacao ?? h.Observacao ?? '—'}</td>
         </tr>`;
