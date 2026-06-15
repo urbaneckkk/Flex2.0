@@ -116,7 +116,7 @@ namespace WebApplication5.Services
                 if (dto.ClienteId == null)
                     throw new InvalidOperationException("Cliente obrigatório para venda no fiado.");
 
-                return _repo.CriarContaReceber(idEmpresa, new CriarContaReceberDto
+                var idConta = _repo.CriarContaReceber(idEmpresa, new CriarContaReceberDto
                 {
                     ClienteId = dto.ClienteId.Value,
                     PedidoId = dto.PedidoId,
@@ -124,6 +124,18 @@ namespace WebApplication5.Services
                     ValorTotal = dto.Valor,
                     DthVencimento = dto.DthVencimentoFiado ?? DateTime.Today.AddDays(30)
                 }, null);
+
+                return _repo.Lancar(caixa.idCaixa, idEmpresa, idUsuario, new LancarCaixaDto
+                {
+                    IdFormaPagamento = dto.IdFormaPagamento,
+                    IdCategoriaFinanceira = idCategoriaVenda,
+                    Valor = dto.Valor,
+                    TipoLancamento = "VENDA",
+                    ClienteId = dto.ClienteId,
+                    PedidoId = dto.PedidoId,
+                    ContaReceberId = idConta,
+                    Descricao = dto.Descricao ?? "Venda rápida — fiado"
+                });
             }
 
             return _repo.Lancar(caixa.idCaixa, idEmpresa, idUsuario, new LancarCaixaDto

@@ -86,7 +86,11 @@ function getPillLabel(status) {
     return map[(status || "").toUpperCase()] ?? status ?? "—";
 }
 
-function isEntrada(l) { return Number(l.tipoCategoria) === 1; }
+function isEntrada(l) {
+    if (l.tipoCategoria !== null && l.tipoCategoria !== undefined)
+        return Number(l.tipoCategoria) === 1;
+    return ['VENDA', 'SUPRIMENTO', 'RECEBIMENTO'].includes((l.tipoLancamento || '').toUpperCase());
+}
 function calcularEntradas() { return lancamentos.filter(l => isEntrada(l)).reduce((a, l) => a + Number(l.valor), 0); }
 function calcularSaidas() { return lancamentos.filter(l => !isEntrada(l)).reduce((a, l) => a + Number(l.valor), 0); }
 function calcularSaldo() {
@@ -308,8 +312,13 @@ function renderizarLancamentos() {
 
     if (!lancamentos.length) {
         tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum lançamento neste caixa.</td></tr>`;
+        renderizarPaginacaoLancamentos();
         return;
     }
+
+    const total = lancamentos.length;
+    const totalPags = Math.ceil(total / ITENS_POR_PAGINA);
+    if (paginaAtual > totalPags) paginaAtual = totalPags;
 
     const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
     const pagina = lancamentos.slice(inicio, inicio + ITENS_POR_PAGINA);
@@ -322,11 +331,11 @@ function renderizarLancamentos() {
         RECEBIMENTO: { classe: "tipo-recebimento", label: "Recebimento" },
     };
 
-    tbody.innerHTML = pagina.map(l => {
+    tbody.innerHTML = pagina.map((l, i) => {
         const cfg = TIPO_CONFIG[(l.tipoLancamento || "").toUpperCase()] || { classe: "tipo-manual", label: l.tipoLancamento || "—" };
         const entrada = isEntrada(l);
         return `
-        <tr>
+        <tr style="cursor:pointer" onclick="abrirDetalheL(${inicio + i})">
             <td>${fmtDataHora(l.dthLancamento)}</td>
             <td><span class="tipo-pill ${cfg.classe}">${cfg.label}</span></td>
             <td>${l.nomeCategoria || "—"}</td>
@@ -336,6 +345,72 @@ function renderizarLancamentos() {
             <td class="${entrada ? "valor-entrada" : "valor-saida"}">${entrada ? "+" : "−"}${fmtMoeda(l.valor)}</td>
         </tr>`;
     }).join("");
+
+    renderizarPaginacaoLancamentos();
+}
+
+function renderizarPaginacaoLancamentos() {
+    const total = lancamentos.length;
+    const totalPags = Math.ceil(total / ITENS_POR_PAGINA);
+    const ini = total === 0 ? 0 : (paginaAtual - 1) * ITENS_POR_PAGINA + 1;
+    const fim = Math.min(paginaAtual * ITENS_POR_PAGINA, total);
+
+    const infoEl = document.querySelector(".lanc-pag-info");
+    if (infoEl) infoEl.textContent = total === 0 ? "Nenhum lançamento" : `Mostrando ${ini}–${fim} de ${total}`;
+
+    const ctrl = document.querySelector(".lanc-pag-ctrl");
+    if (!ctrl) return;
+    ctrl.innerHTML = "";
+
+    const prev = document.createElement("button");
+    prev.className = "btn-pagina"; prev.textContent = "‹"; prev.disabled = paginaAtual === 1;
+    prev.onclick = () => { paginaAtual--; renderizarLancamentos(); };
+    ctrl.appendChild(prev);
+
+    for (let i = 1; i <= totalPags; i++) {
+        if (totalPags > 7 && i > 2 && i < totalPags - 1 && Math.abs(i - paginaAtual) > 1) {
+            if (i === 3 || i === totalPags - 2) {
+                const sp = document.createElement("span");
+                sp.textContent = "…"; sp.style.padding = "0 .4rem";
+                ctrl.appendChild(sp);
+            }
+            continue;
+        }
+        const btn = document.createElement("button");
+        btn.className = `btn-pagina${i === paginaAtual ? " ativo" : ""}`;
+        btn.textContent = i;
+        btn.onclick = () => { paginaAtual = i; renderizarLancamentos(); };
+        ctrl.appendChild(btn);
+    }
+
+    const next = document.createElement("button");
+    next.className = "btn-pagina"; next.textContent = "›"; next.disabled = paginaAtual >= totalPags;
+    next.onclick = () => { paginaAtual++; renderizarLancamentos(); };
+    ctrl.appendChild(next);
+}
+
+function abrirDetalheL(idx) {
+    const l = lancamentos[idx];
+    if (!l) return;
+    const entrada = isEntrada(l);
+    const TIPO_CONFIG = {
+        VENDA: "Venda", DESPESA: "Despesa", SANGRIA: "Sangria",
+        SUPRIMENTO: "Suprimento", RECEBIMENTO: "Recebimento"
+    };
+    document.getElementById("dl-tipo").textContent = TIPO_CONFIG[(l.tipoLancamento || "").toUpperCase()] || l.tipoLancamento || "—";
+    document.getElementById("dl-data").textContent = fmtDataHora(l.dthLancamento);
+    document.getElementById("dl-valor").textContent = (entrada ? "+" : "−") + fmtMoeda(l.valor);
+    document.getElementById("dl-valor").className = entrada ? "valor-entrada" : "valor-saida";
+    document.getElementById("dl-fp").textContent = l.nomeFormaPagamento || "—";
+    document.getElementById("dl-cat").textContent = l.nomeCategoria || "—";
+    document.getElementById("dl-cliente").textContent = l.nomeCliente || "—";
+    document.getElementById("dl-desc").textContent = l.descricao || "—";
+    document.getElementById("dl-ref").textContent = l.referencia || "—";
+    document.getElementById("modal-detalhe-lanc").classList.add("open");
+}
+
+function fecharDetalheL() {
+    document.getElementById("modal-detalhe-lanc").classList.remove("open");
 }
 
 // ── Renderizar contas a receber ───────────
@@ -395,9 +470,10 @@ function renderizarHistorico() {
 
     tbody.innerHTML = historicoList.map(h => {
         const diff = Number(h.saldoFinal || 0) - Number(h.saldoInicial || 0);
+        const fechado = !!h.dthFechamento;
         return `
-        <tr>
-            <td><span class="status-pill ${h.fechado ? 'status-fechado' : 'status-aberto'}">${h.fechado ? 'Fechado' : 'Aberto'}</span></td>
+    <tr>
+        <td><span class="status-pill ${fechado ? 'status-fechado' : 'status-aberto'}">${fechado ? 'Fechado' : 'Aberto'}</span></td>
             <td>${h.nomeOperador || "—"}</td>
             <td>${fmtDataHora(h.dthAbertura)}</td>
             <td>${h.dthFechamento ? fmtDataHora(h.dthFechamento) : "Em aberto"}</td>
@@ -589,7 +665,8 @@ function abrirModalVendaRapida() {
     document.getElementById("vr-cpf-wrap").style.display = "none";
     document.getElementById("vr-fiado-wrap").style.display = "none";
     document.getElementById("vr-vencimento-wrap").style.display = "none";
-    document.getElementById("vr-cpf").value = "";
+    document.getElementById("vr-cliente-busca").value = "";
+    document.getElementById("vr-cliente-dropdown").style.display = "none";
     document.getElementById("vr-cliente-info").style.display = "none";
     document.getElementById("vr-fiado").checked = false;
 
@@ -728,33 +805,55 @@ function selecionarProdutoVR(idProduto) {
     _vrProdutoIdx = null;
 }
 
-// ── CPF / Fiado (Venda Rápida) ────────────
+
 function toggleCpfVenda() {
     const wrap = document.getElementById("vr-cpf-wrap");
-    if (wrap) wrap.style.display = wrap.style.display === "none" ? "" : "none";
+    if (!wrap) return;
+    const abrir = wrap.style.display === "none";
+    wrap.style.display = abrir ? "" : "none";
+    if (!abrir) {
+        document.getElementById("vr-cliente-busca").value = "";
+        document.getElementById("vr-cliente-dropdown").style.display = "none";
+        document.getElementById("vr-cliente-info").style.display = "none";
+        document.getElementById("vr-fiado-wrap").style.display = "none";
+        document.getElementById("vr-vencimento-wrap").style.display = "none";
+        _clienteSelecionadoVenda = null;
+    }
 }
 
-async function buscarClienteCpf() {
-    const cpf = document.getElementById("vr-cpf").value.replace(/\D/g, "");
-    if (cpf.length < 11) { flexToast("Informe um CPF válido.", "aviso"); return; }
+function filtrarClientesVenda(termo) {
+    const dropdown = document.getElementById("vr-cliente-dropdown");
+    if (!dropdown) return;
+    const t = (termo || "").toLowerCase().trim();
+    if (!t) { dropdown.style.display = "none"; return; }
 
-    const cliente = clientesCache.find(c => (c.cpfCNPJ || "").replace(/\D/g, "") === cpf);
-    const infoEl = document.getElementById("vr-cliente-info");
-    const fiadoWrap = document.getElementById("vr-fiado-wrap");
-
-    if (!cliente) {
-        flexToast("Cliente não encontrado.", "aviso");
-        infoEl.style.display = "none";
-        fiadoWrap.style.display = "none";
-        _clienteSelecionadoVenda = null;
+    const filtrados = clientesCache.filter(c => (c.nome || "").toLowerCase().includes(t)).slice(0, 20);
+    if (!filtrados.length) {
+        dropdown.innerHTML = `<div style="padding:.8rem 1.2rem;color:#6b7280;font-size:1.3rem">Nenhum cliente encontrado</div>`;
+        dropdown.style.display = "";
         return;
     }
-
-    _clienteSelecionadoVenda = cliente;
-    infoEl.innerHTML = `<i class="bi bi-person-check-fill"></i> ${cliente.nome}`;
-    infoEl.style.display = "flex";
-    fiadoWrap.style.display = "";
+    dropdown.innerHTML = filtrados.map(c => `
+        <div onclick="selecionarClienteVenda(${c.idCliente})"
+            style="padding:.8rem 1.2rem;cursor:pointer;font-size:1.3rem;border-bottom:1px solid #f1f5f9">
+            <strong>${c.nome}</strong>
+            ${c.cpfCNPJ ? `<span style="color:#6b7280;margin-left:.6rem">${c.cpfCNPJ}</span>` : ""}
+        </div>`).join("");
+    dropdown.style.display = "";
 }
+
+function selecionarClienteVenda(idCliente) {
+    const cliente = clientesCache.find(c => c.idCliente === idCliente);
+    if (!cliente) return;
+    _clienteSelecionadoVenda = cliente;
+    document.getElementById("vr-cliente-busca").value = cliente.nome;
+    document.getElementById("vr-cliente-dropdown").style.display = "none";
+    document.getElementById("vr-cliente-info").innerHTML =
+        `<i class="bi bi-person-check-fill" style="color:#15803d"></i> ${cliente.nome}`;
+    document.getElementById("vr-cliente-info").style.display = "flex";
+    document.getElementById("vr-fiado-wrap").style.display = "";
+}
+
 
 function toggleFiado() {
     const checked = document.getElementById("vr-fiado").checked;
@@ -784,9 +883,9 @@ document.addEventListener("DOMContentLoaded", () => {
             Valor: valor,
             IdFormaPagamento: parseInt(document.getElementById("vr-formapgto").value) || null,
             Descricao: document.getElementById("vr-descricao").value || null,
-            IdCliente: _clienteSelecionadoVenda?.idCliente || null,
+            ClienteId: _clienteSelecionadoVenda?.idCliente || null,
             Fiado: fiado,
-            DthVencimento: fiado ? vencimento : null
+            DthVencimentoFiado: fiado ? vencimento : null
         };
 
         try {
@@ -919,8 +1018,15 @@ document.addEventListener("DOMContentLoaded", () => {
         ["modal-alterar-vencimento", fecharModalAlterarVencimento],
     ];
 
+    document.addEventListener("click", function (e) {
+        const dropdown = document.getElementById("vr-cliente-dropdown");
+        const busca = document.getElementById("vr-cliente-busca");
+        if (dropdown && busca && !dropdown.contains(e.target) && e.target !== busca)
+            dropdown.style.display = "none";
+    });
     // Garante aba inicial
     mudarAba("lancamentos");
+
 
     // Inicializa tela
     inicializar();

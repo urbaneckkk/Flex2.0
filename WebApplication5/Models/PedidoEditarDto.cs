@@ -7,6 +7,7 @@ public class PedidoEditarDto
     public decimal Desconto { get; set; }
     public decimal ValorFrete { get; set; }
     public string? Observacao { get; set; }
+    public DateTime? DthPrevisaoEntrega { get; set; }
     public List<PedidoItemModel> Itens { get; set; } = new();
     public List<PedidoPagamentoModel> Pagamentos { get; set; } = new();
 }

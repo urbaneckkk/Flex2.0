@@ -45,6 +45,12 @@ namespace WebApplication5.Services
                 _estoqueService.DescontarEstoque(item.IdProduto, item.Quantidade, idEmpresa, idUsuario);
             }
 
+            foreach (var pag in dto.Pagamentos ?? new())
+            {
+                pag.IdPedido = idPedido;
+                _repo.InserirPagamento(pag);
+            }
+
             return idPedido;
         }
 
@@ -82,7 +88,7 @@ namespace WebApplication5.Services
             }
 
             valorTotal = valorTotal + dto.ValorFrete - dto.Desconto;
-            _repo.AtualizarCabecalho(dto.IdPedido, valorTotal, dto.Desconto, dto.ValorFrete, dto.Observacao);
+            _repo.AtualizarCabecalho(dto.IdPedido, valorTotal, dto.Desconto, dto.ValorFrete, dto.Observacao, dto.DthPrevisaoEntrega);
 
             _repo.DeletarPagamentos(dto.IdPedido);
             foreach (var pag in dto.Pagamentos)

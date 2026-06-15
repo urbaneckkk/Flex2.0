@@ -13,6 +13,8 @@ const TOTAL_ETAPAS = 4;
 let cfgEtapa = 1;
 const CFG_TOTAL_ETAPAS = 2;
 let cfgFornecedorSelecionado = null;
+let paginaAtualEstoque = 1;
+const ITENS_POR_PAGINA_EST = 15;
 
 async function apiGet(url) {
     const res = await fetch(url);
@@ -114,6 +116,7 @@ function aplicarFiltros() {
         if (termo && !(item.nomeProduto ?? "").toLowerCase().includes(termo)) return false;
         return true;
     });
+    paginaAtualEstoque = 1;
     renderizarTabela();
 }
 
@@ -123,10 +126,18 @@ function renderizarTabela() {
 
     if (!listaFiltrada.length) {
         tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Nenhum item encontrado.</td></tr>`;
+        renderizarPaginacaoEstoque();
         return;
     }
 
-    tbody.innerHTML = listaFiltrada.map(item => {
+    const total = listaFiltrada.length;
+    const totalPags = Math.ceil(total / ITENS_POR_PAGINA_EST);
+    if (paginaAtualEstoque > totalPags) paginaAtualEstoque = 1;
+
+    const inicio = (paginaAtualEstoque - 1) * ITENS_POR_PAGINA_EST;
+    const pagina = listaFiltrada.slice(inicio, inicio + ITENS_POR_PAGINA_EST);
+
+    tbody.innerHTML = pagina.map(item => {
         const status = classificarStatus(item);
         const labelSt = { critico: "Crítico", normal: "Normal", excesso: "Excesso" }[status];
         const classSt = `status-${status}`;
@@ -156,6 +167,48 @@ function renderizarTabela() {
             <td>${formatarData(item.dthUltimaAtualizacao)}</td>
         </tr>`;
     }).join("");
+
+    renderizarPaginacaoEstoque();
+}
+
+function renderizarPaginacaoEstoque() {
+    const total = listaFiltrada.length;
+    const totalPags = Math.ceil(total / ITENS_POR_PAGINA_EST);
+    const ini = total === 0 ? 0 : (paginaAtualEstoque - 1) * ITENS_POR_PAGINA_EST + 1;
+    const fim = Math.min(paginaAtualEstoque * ITENS_POR_PAGINA_EST, total);
+
+    const infoEl = document.querySelector(".est-pag-info");
+    if (infoEl) infoEl.textContent = total === 0 ? "Nenhum item" : `Mostrando ${ini}–${fim} de ${total}`;
+
+    const ctrl = document.querySelector(".est-pag-ctrl");
+    if (!ctrl) return;
+    ctrl.innerHTML = "";
+
+    const prev = document.createElement("button");
+    prev.className = "btn-pagina"; prev.textContent = "‹"; prev.disabled = paginaAtualEstoque === 1;
+    prev.onclick = () => { paginaAtualEstoque--; renderizarTabela(); };
+    ctrl.appendChild(prev);
+
+    for (let i = 1; i <= totalPags; i++) {
+        if (totalPags > 7 && i > 2 && i < totalPags - 1 && Math.abs(i - paginaAtualEstoque) > 1) {
+            if (i === 3 || i === totalPags - 2) {
+                const sp = document.createElement("span");
+                sp.textContent = "…"; sp.style.padding = "0 .4rem";
+                ctrl.appendChild(sp);
+            }
+            continue;
+        }
+        const btn = document.createElement("button");
+        btn.className = `btn-pagina${i === paginaAtualEstoque ? " ativo" : ""}`;
+        btn.textContent = i;
+        btn.onclick = () => { paginaAtualEstoque = i; renderizarTabela(); };
+        ctrl.appendChild(btn);
+    }
+
+    const next = document.createElement("button");
+    next.className = "btn-pagina"; next.textContent = "›"; next.disabled = paginaAtualEstoque >= totalPags;
+    next.onclick = () => { paginaAtualEstoque++; renderizarTabela(); };
+    ctrl.appendChild(next);
 }
 
 // ── Modal: Inserir no Estoque (Wizard 4 etapas) ──

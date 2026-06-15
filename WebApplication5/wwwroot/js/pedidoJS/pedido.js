@@ -242,10 +242,11 @@ function renderizarTabela() {
                     onclick="abrirModalDetalhe(${p.idPedido})">
                     <i class="bi bi-eye-fill"></i>
                 </button>
-                <button class="btn-acao btn-editar" title="Editar"
-                    onclick="abrirModalEditar(${p.idPedido})">
-                    <i class="bi bi-pencil-fill"></i>
-                </button>
+                ${p.statusPedidoId !== 5 && p.statusPedidoId !== 6 ? `
+                    <button class="btn-acao btn-editar" title="Editar"
+                        onclick="abrirModalEditar(${p.idPedido})">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>` : ""}
                 ${p.statusPedidoId !== 6 ? `
                 <button class="btn-acao btn-cancelar" title="Cancelar"
                     onclick="abrirModalCancelar(${p.idPedido}, '${String(p.numeroPedido).replace(/'/g, "\\'")}')">
@@ -342,6 +343,11 @@ async function abrirModalEditar(idPedido) {
     const pedido = todosPedidos.find(p => p.idPedido === idPedido);
     if (!pedido) return;
 
+    if (pedido.statusPedidoId === 5 || pedido.statusPedidoId === 6) {
+        flexToast("Não é possível editar pedidos concluídos ou cancelados.", "aviso");
+        return;
+    }
+
     _pedidoEmEdicao = idPedido;
     itensPedidoAtual = [];
     pagamentosPedidoAtual = [];
@@ -351,7 +357,8 @@ async function abrirModalEditar(idPedido) {
     document.getElementById("pedido-id-cliente").value = pedido.idCliente;
     document.getElementById("pedido-nome-cliente").value = pedido.nomeCliente ?? "";
     document.getElementById("pedido-canal").value = pedido.canal ?? "LOJA";
-    document.getElementById("pedido-previsao").value = "";
+    document.getElementById("pedido-previsao").value = pedido.dthPrevisaoEntrega
+        ? pedido.dthPrevisaoEntrega.substring(0, 10) : "";
     document.getElementById("pedido-obs").value = pedido.observacao ?? "";
 
     // Carrega itens
@@ -668,6 +675,7 @@ async function salvarPedido() {
                 Desconto: descTotal,
                 ValorFrete: 0,
                 Observacao: document.getElementById("pedido-obs").value || null,
+                DthPrevisaoEntrega: document.getElementById("pedido-previsao").value || null,
                 Itens: itensPedidoAtual.filter(i => i.idProduto).map(i => ({
                     IdProduto: i.idProduto, Quantidade: i.quantidade,
                     ValorUnitario: i.preco, Desconto: i.desconto,
@@ -696,6 +704,11 @@ async function salvarPedido() {
                     IdProduto: i.idProduto, Quantidade: i.quantidade,
                     ValorUnitario: i.preco, Desconto: i.desconto,
                     ValorTotal: i.quantidade * i.preco - i.desconto
+                })),
+                Pagamentos: pagamentosPedidoAtual.map(p => ({
+                    FormaPagamento_id: p.idFormaPagamento,
+                    Valor: p.valor,
+                    DthPagamento: p.dthPagamento
                 }))
             });
             flexToast("Pedido criado!", "sucesso");

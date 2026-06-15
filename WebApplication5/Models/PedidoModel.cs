@@ -49,6 +49,8 @@
         public decimal desconto { get; set; }
         public decimal valorFrete { get; set; }
         public DateTime dthCriacao { get; set; }
+
+        public DateTime? dthPrevisaoEntrega { get; set; }
         public int idEmpresa { get; set; }
         public int totalItens { get; set; }
     }
@@ -79,6 +81,7 @@
     {
         public PedidoModel Pedido { get; set; } = new();
         public List<PedidoItemModel> Itens { get; set; } = new();
+        public List<PedidoPagamentoModel> Pagamentos { get; set; } = new();
     }
 
     public class PedidoEditarDto
@@ -103,6 +106,7 @@
         public int IdPagamento { get; set; }
         public int IdPedido { get; set; }
         public int FormaPagamento_id { get; set; }
+        public string? NomeFP { get; set; }
         public decimal Valor { get; set; }
         public DateTime DthPagamento { get; set; }
     }

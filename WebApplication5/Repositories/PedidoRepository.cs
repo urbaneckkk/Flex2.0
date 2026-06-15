@@ -32,7 +32,7 @@ namespace WebApplication5.Repositories
         }
 
         public void AtualizarCabecalho(int idPedido, decimal valorTotal,
-            decimal desconto, decimal valorFrete, string? observacao)
+            decimal desconto, decimal valorFrete, string? observacao, DateTime? dthPrevisaoEntrega = null)
         {
             using var conn = new MySqlConnection(_connectionString);
             conn.Execute(
@@ -43,7 +43,8 @@ namespace WebApplication5.Repositories
                     p_valorTotal = valorTotal,
                     p_Desconto = desconto,
                     p_valorFrete = valorFrete,
-                    p_Observacao = observacao
+                    p_Observacao = observacao,
+                    p_dthPrevisaoEntrega = dthPrevisaoEntrega
                 },
                 commandType: CommandType.StoredProcedure);
         }

@@ -209,13 +209,18 @@ function renderizarTabela() {
 
     // Botões numéricos
     for (let i = 1; i <= totalPags; i++) {
+        if (totalPags > 7 && i > 2 && i < totalPags - 1 && Math.abs(i - paginaAtual) > 1) {
+            if (i === 3 || i === totalPags - 2) {
+                const sp = document.createElement("span");
+                sp.textContent = "…"; sp.style.padding = "0 .4rem";
+                ctrl.appendChild(sp);
+            }
+            continue;
+        }
         const btn = document.createElement("button");
         btn.className = `btn-pagina${i === paginaAtual ? " ativo" : ""}`;
         btn.textContent = i;
-        btn.onclick = () => {
-            paginaAtual = i;
-            renderizarTabela();
-        };
+        btn.onclick = () => { paginaAtual = i; renderizarTabela(); };
         ctrl.appendChild(btn);
     }
 
