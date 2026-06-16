@@ -9,7 +9,7 @@ public class EmailService
 
     public EmailService(IConfiguration config)
     {
-        _apiKey  = config["Resend:ApiKey"]!;
+        _apiKey  = config["Brevo:ApiKey"]!;
         _baseUrl = config["App:BaseUrl"]!;
     }
 
@@ -31,21 +31,22 @@ public class EmailService
 
         var payload = JsonSerializer.Serialize(new
         {
-            from    = "FlexGestor <onboarding@resend.dev>",
-            to      = new[] { emailDestino },
+            sender  = new { name = "FlexGestor", email = "decaozao@gmail.com" },
+            to      = new[] { new { email = emailDestino, name = nomeUsuario } },
             subject = "Redefinição de senha — FlexGestor",
-            html
+            htmlContent = html
         });
 
         using var http = new HttpClient();
-        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        http.DefaultRequestHeaders.Add("api-key", _apiKey);
+        http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var response = await http.PostAsync(
-            "https://api.resend.com/emails",
+            "https://api.brevo.com/v3/smtp/email",
             new StringContent(payload, Encoding.UTF8, "application/json"));
 
         var body = await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"Resend status: {response.StatusCode} — {body}");
+        Console.WriteLine($"Brevo status: {response.StatusCode} — {body}");
 
         if (!response.IsSuccessStatusCode)
             throw new Exception($"Falha ao enviar email: {response.StatusCode} — {body}");
