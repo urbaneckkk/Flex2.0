@@ -1,20 +1,15 @@
-using System.Net;
-using System.Net.Mail;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 public class EmailService
 {
-    private readonly string _host;
-    private readonly int _port;
-    private readonly string _usuario;
-    private readonly string _senha;
+    private readonly string _apiKey;
     private readonly string _baseUrl;
 
     public EmailService(IConfiguration config)
     {
-        _host    = config["Smtp:Host"]!;
-        _port    = int.Parse(config["Smtp:Port"] ?? "587");
-        _usuario = config["Smtp:Usuario"]!;
-        _senha   = config["Smtp:Senha"]!;
+        _apiKey  = config["Resend:ApiKey"]!;
         _baseUrl = config["App:BaseUrl"]!;
     }
 
@@ -34,22 +29,25 @@ public class EmailService
                 <p style='color:#999;font-size:12px'>Se você não solicitou isso, ignore este email.</p>
             </div>";
 
-        using var smtp = new SmtpClient(_host, _port)
+        var payload = JsonSerializer.Serialize(new
         {
-            Credentials = new NetworkCredential(_usuario, _senha),
-            EnableSsl = true
-        };
+            from    = "FlexGestor <onboarding@resend.dev>",
+            to      = new[] { emailDestino },
+            subject = "Redefinição de senha — FlexGestor",
+            html
+        });
 
-        using var msg = new MailMessage
-        {
-            From = new MailAddress(_usuario, "FlexGestor"),
-            Subject = "Redefinição de senha — FlexGestor",
-            Body = html,
-            IsBodyHtml = true
-        };
-        msg.To.Add(new MailAddress(emailDestino, nomeUsuario));
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-        await smtp.SendMailAsync(msg);
-        Console.WriteLine($"Email enviado para {emailDestino}");
+        var response = await http.PostAsync(
+            "https://api.resend.com/emails",
+            new StringContent(payload, Encoding.UTF8, "application/json"));
+
+        var body = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Resend status: {response.StatusCode} — {body}");
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Falha ao enviar email: {response.StatusCode} — {body}");
     }
 }
