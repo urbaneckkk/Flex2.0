@@ -14,9 +14,9 @@ namespace WebApplication5.Services
             _enderecoRepo = enderecoRepo;
         }
 
-        public IEnumerable<ClienteListaGridDto> Listar()
+        public IEnumerable<ClienteListaGridDto> Listar(int idEmpresa)
         {
-            return _clienteRepo.ListarClientes();
+            return _clienteRepo.ListarClientes(idEmpresa);
         }
 
         public IEnumerable<ClienteListaGridDto> Filtrar(ClienteFiltroDto filtro)

@@ -1,25 +1,27 @@
-﻿using Azure;
-using SendGrid;
-using SendGrid.Helpers.Mail;
+using System.Net;
+using System.Net.Mail;
 
 public class EmailService
 {
-    private readonly string _apiKey;
+    private readonly string _host;
+    private readonly int _port;
+    private readonly string _usuario;
+    private readonly string _senha;
     private readonly string _baseUrl;
 
     public EmailService(IConfiguration config)
     {
-        _apiKey = config["SendGrid:ApiKey"];
-        _baseUrl = config["App:BaseUrl"];
+        _host    = config["Smtp:Host"]!;
+        _port    = int.Parse(config["Smtp:Port"] ?? "587");
+        _usuario = config["Smtp:Usuario"]!;
+        _senha   = config["Smtp:Senha"]!;
+        _baseUrl = config["App:BaseUrl"]!;
     }
 
     public async Task EnviarResetSenha(string emailDestino, string nomeUsuario, string token)
     {
-        var client = new SendGridClient(_apiKey);
         var link = $"{_baseUrl}/Login/RedefinirSenha?token={token}";
-        var from = new EmailAddress("flexgestor5@gmail.com", "teste");
-        var to = new EmailAddress(emailDestino, nomeUsuario);
-        var subject = "Redefinição de senha — FlexGestor";
+
         var html = $@"
             <div style='font-family:sans-serif;max-width:480px;margin:auto'>
                 <h2>Redefinição de senha</h2>
@@ -32,9 +34,22 @@ public class EmailService
                 <p style='color:#999;font-size:12px'>Se você não solicitou isso, ignore este email.</p>
             </div>";
 
-        var msg = MailHelper.CreateSingleEmail(from, to, subject, "", html);
-        //linha pra ver o retorno se deu boa ou nao pode ser removida depois
-        var response = await client.SendEmailAsync(msg);
-        Console.WriteLine($"Status: {response.StatusCode}");
+        using var smtp = new SmtpClient(_host, _port)
+        {
+            Credentials = new NetworkCredential(_usuario, _senha),
+            EnableSsl = true
+        };
+
+        using var msg = new MailMessage
+        {
+            From = new MailAddress(_usuario, "FlexGestor"),
+            Subject = "Redefinição de senha — FlexGestor",
+            Body = html,
+            IsBodyHtml = true
+        };
+        msg.To.Add(new MailAddress(emailDestino, nomeUsuario));
+
+        await smtp.SendMailAsync(msg);
+        Console.WriteLine($"Email enviado para {emailDestino}");
     }
 }

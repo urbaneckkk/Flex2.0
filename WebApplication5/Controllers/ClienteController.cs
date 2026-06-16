@@ -23,7 +23,8 @@ public class ClienteController : BaseController
     public IActionResult Listar()
     {
         var r = VerificarSessaoApi(); if (r != null) return r;
-        return Json(_service.Listar());
+        var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa") ?? 0;
+        return Json(_service.Listar(idEmpresa));
     }
 
     [HttpPost]

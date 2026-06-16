@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using MySql.Data.MySqlClient;
-using Newtonsoft.Json.Linq;
 using System.Data;
 
 public class TokenResetRepository
@@ -8,7 +7,7 @@ public class TokenResetRepository
     private readonly string _connectionString;
     public TokenResetRepository(IConfiguration config)
     {
-        _connectionString = config.GetConnectionString("Default");
+        _connectionString = config.GetConnectionString("Default")!;
     }
 
     public void Inserir(int idUsuario, string token, DateTime expiracao)

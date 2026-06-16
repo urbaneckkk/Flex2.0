@@ -14,17 +14,12 @@ namespace WebApplication5.Repositories
             _connectionString = config.GetConnectionString("Default")!;
         }
 
-        public IEnumerable<ClienteListaGridDto> ListarClientes()
+        public IEnumerable<ClienteListaGridDto> ListarClientes(int idEmpresa)
         {
             using var conn = new MySqlConnection(_connectionString);
-            var clientes = conn.Query<ClienteListaGridDto>(
+            return conn.Query<ClienteListaGridDto>(
                 "sp_ListarCliente",
                 commandType: CommandType.StoredProcedure);
-
-            foreach (var c in clientes)
-                c.fAtivo = c.fAtivo;
-
-            return clientes;
         }
 
         public IEnumerable<ClienteListaGridDto> FiltrarClientes(ClienteFiltroDto filtro)

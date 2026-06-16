@@ -151,8 +151,8 @@ function aplicarFiltros() {
     pedidosFiltrados = todosPedidos.filter(p => {
         if (!idsPermitidos.includes(p.statusPedidoId)) return false;
         if (filtroClienteStr) {
-            const q = filtroClienteStr.toLowerCase();
-            if (!p.nomeCliente?.toLowerCase().includes(q) &&
+            const q = normalizar(filtroClienteStr);
+            if (!normalizar(p.nomeCliente).includes(q) &&
                 !String(p.numeroPedido).includes(q)) return false;
         }
         return true;
@@ -197,6 +197,11 @@ function fmtDataHora(s) {
     });
 }
 
+// normaliza string removendo acentos para comparação
+function normalizar(s) {
+    return (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
 // destaca texto buscado com <mark>
 function highlight(texto, busca) {
     if (!busca || !texto) return texto ?? "";
@@ -206,7 +211,6 @@ function highlight(texto, busca) {
 
 // inicializa estado inicial da tela
 document.getElementById("btn-f-todos").classList.add("sel-todos");
-carregarPedidos();
 
 // ===== PEDIDO.JS — parte 2: renderização, modais, ações =====
 // Este arquivo deve ser incluído APÓS pedido.js na view,
@@ -479,10 +483,17 @@ function atualizarResumo() {
 // ════════════════════════════════════════════
 // BUSCA DE CLIENTE
 // ════════════════════════════════════════════
-function abrirBuscaCliente() {
+async function abrirBuscaCliente() {
+    const lista = document.getElementById("lista-busca-clientes");
     document.getElementById("input-busca-cliente-modal").value = "";
-    filtrarListaClientes("");
     document.getElementById("modal-busca-cliente").classList.add("open");
+
+    if (!clientesCache.length) {
+        lista.innerHTML = `<div class="busca-vazia"><i class="bi bi-hourglass-split"></i> Carregando...</div>`;
+        await carregarClientes();
+    }
+
+    filtrarListaClientes("");
 }
 
 function fecharBuscaCliente() {
@@ -491,11 +502,12 @@ function fecharBuscaCliente() {
 
 function filtrarListaClientes(termo) {
     const lista = document.getElementById("lista-busca-clientes");
-    const t = (termo || "").toLowerCase();
+    const t = normalizar(termo);
     const filtrados = clientesCache
-        .filter(c => c.fAtivo === true || c.fAtivo === 1)
+        .filter(c => c.fAtivo !== false && c.fAtivo !== 0)
         .filter(c => !t ||
-            (c.nome ?? "").toLowerCase().includes(t) ||
+            normalizar(c.nome).includes(t) ||
+            normalizar(c.nomeFantasia ?? "").includes(t) ||
             (c.cpfCNPJ ?? "").replace(/\D/g, "").includes(t.replace(/\D/g, "")));
 
     if (!filtrados.length) {
