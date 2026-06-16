@@ -90,6 +90,9 @@ namespace WebApplication5.Services
             return _repo.ListarLancamentos(idEmpresa, caixa.idCaixa);
         }
 
+        public IEnumerable<LancamentoCaixaModel> ListarLancamentosPorCaixa(int idEmpresa, int idCaixa)
+            => _repo.ListarLancamentos(idEmpresa, idCaixa);
+
         public IEnumerable<BreakdownFormaPagamentoDto> Breakdown(int idEmpresa)
         {
             var caixa = _repo.BuscarAberto(idEmpresa);

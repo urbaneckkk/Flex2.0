@@ -479,20 +479,127 @@ function renderizarHistorico() {
         return;
     }
 
-    tbody.innerHTML = historicoList.map(h => {
+    tbody.innerHTML = historicoList.map((h, i) => {
         const diff = Number(h.saldoFinal || 0) - Number(h.saldoInicial || 0);
         const fechado = !h.fAtivo;
         return `
-    <tr>
+    <tr style="cursor:pointer" onclick="abrirDetalheCaixa(${i})" title="Ver lançamentos">
         <td><span class="status-pill ${fechado ? 'status-fechado' : 'status-aberto'}">${fechado ? 'Fechado' : 'Aberto'}</span></td>
             <td>${h.nomeOperador || "—"}</td>
             <td>${fmtDataHora(h.dthAbertura)}</td>
-            <td>${h.dthFechamento ? fmtDataHora(h.dthFechamento) : "Em aberto"}</td>
+            <td>${h.dthFechamento ? fmtDataHora(h.dthFechamento) : "<em style='color:#9ca3af'>Em aberto</em>"}</td>
             <td>${fmtMoeda(h.saldoInicial)}</td>
-            <td>${fmtMoeda(h.saldoFinal)}</td>
-            <td class="${diff >= 0 ? 'valor-entrada' : 'valor-saida'}">${fmtMoeda(diff)}</td>
+            <td>${fmtMoeda(h.saldoFinal || 0)}</td>
+            <td class="${diff >= 0 ? 'valor-entrada' : 'valor-saida'}">${diff >= 0 ? "+" : ""}${fmtMoeda(diff)}</td>
         </tr>`;
     }).join("");
+}
+
+// ═══════════════════════════════════════════
+// MODAL: DETALHE CAIXA HISTÓRICO
+// ═══════════════════════════════════════════
+const TIPO_CONFIG_DC = {
+    VENDA: { classe: "tipo-venda", label: "Venda" },
+    DESPESA: { classe: "tipo-despesa", label: "Despesa" },
+    SANGRIA: { classe: "tipo-sangria", label: "Sangria" },
+    SUPRIMENTO: { classe: "tipo-suprimento", label: "Suprimento" },
+    RECEBIMENTO: { classe: "tipo-recebimento", label: "Recebimento" },
+};
+
+async function abrirDetalheCaixa(idx) {
+    const h = historicoList[idx];
+    if (!h) return;
+
+    const diff = Number(h.saldoFinal || 0) - Number(h.saldoInicial || 0);
+    const fechado = !h.fAtivo;
+
+    document.getElementById("dc-titulo").textContent =
+        `Caixa #${h.idCaixa} — ${h.nomeOperador || "—"}`;
+    document.getElementById("dc-operador").textContent = h.nomeOperador || "—";
+    document.getElementById("dc-abertura").textContent = fmtDataHora(h.dthAbertura);
+    document.getElementById("dc-fechamento").textContent =
+        h.dthFechamento ? fmtDataHora(h.dthFechamento) : "Em aberto";
+    document.getElementById("dc-saldo-inicial").textContent = fmtMoeda(h.saldoInicial);
+
+    const elFinal = document.getElementById("dc-saldo-final");
+    elFinal.textContent = fechado ? fmtMoeda(h.saldoFinal) : "Em aberto";
+
+    const elDiff = document.getElementById("dc-diferenca");
+    if (fechado) {
+        elDiff.textContent = (diff >= 0 ? "+" : "") + fmtMoeda(diff);
+        elDiff.className = "dc-info-valor " + (diff >= 0 ? "verde" : "vermelho");
+    } else {
+        elDiff.textContent = "—";
+        elDiff.className = "dc-info-valor";
+    }
+
+    document.getElementById("tbody-dc-lanc").innerHTML =
+        `<tr><td colspan="8" class="empty-state">Carregando...</td></tr>`;
+    document.getElementById("dc-totais").innerHTML = "";
+    document.getElementById("modal-detalhe-caixa").classList.add("open");
+
+    try {
+        const lancs = await apiGet(`/Caixa/LancamentosPorCaixa?idCaixa=${h.idCaixa}`);
+
+        // Totalizadores
+        const entradas = lancs.filter(l => l.tipoCategoria === 1 || l.tipoCategoria === "1");
+        const saidas = lancs.filter(l => l.tipoCategoria === 2 || l.tipoCategoria === "2");
+        const totEnt = entradas.reduce((s, l) => s + Number(l.valor), 0);
+        const totSai = saidas.reduce((s, l) => s + Number(l.valor), 0);
+
+        document.getElementById("dc-totais").innerHTML = `
+            <div class="dc-total-item">
+                <span class="dc-total-label"><i class="bi bi-arrow-down-circle-fill" style="color:#15803d"></i> Entradas</span>
+                <span class="dc-total-valor verde">+${fmtMoeda(totEnt)}</span>
+            </div>
+            <div class="dc-total-item">
+                <span class="dc-total-label"><i class="bi bi-arrow-up-circle-fill" style="color:#dc2626"></i> Saídas</span>
+                <span class="dc-total-valor vermelho">−${fmtMoeda(totSai)}</span>
+            </div>
+            <div class="dc-total-item dc-total-liquido">
+                <span class="dc-total-label"><i class="bi bi-graph-up-arrow"></i> Líquido</span>
+                <span class="dc-total-valor ${totEnt - totSai >= 0 ? 'verde' : 'vermelho'}">${fmtMoeda(totEnt - totSai)}</span>
+            </div>
+            <div class="dc-total-item">
+                <span class="dc-total-label"><i class="bi bi-receipt"></i> Lançamentos</span>
+                <span class="dc-total-valor">${lancs.length}</span>
+            </div>`;
+
+        if (!lancs.length) {
+            document.getElementById("tbody-dc-lanc").innerHTML =
+                `<tr><td colspan="8" class="empty-state">Nenhum lançamento neste caixa.</td></tr>`;
+            return;
+        }
+
+        document.getElementById("tbody-dc-lanc").innerHTML = lancs.map(l => {
+            const cfg = TIPO_CONFIG_DC[(l.tipoLancamento || "").toUpperCase()] ||
+                { classe: "tipo-manual", label: l.tipoLancamento || "—" };
+            const entrada = l.tipoCategoria === 1 || l.tipoCategoria === "1";
+            const fiado = !!l.contaReceber_id;
+            const dtRaw = l.dthLancamento ? (l.dthLancamento.endsWith?.("Z") ? l.dthLancamento.slice(0,-1) : l.dthLancamento) : null;
+            const dtObj = dtRaw ? new Date(dtRaw) : null;
+            const dataStr = dtObj ? dtObj.toLocaleDateString("pt-BR") : "—";
+            const horaStr = dtObj ? dtObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+            return `<tr>
+                <td><div class="lanc-data">${dataStr}</div><div class="lanc-hora">${horaStr}</div></td>
+                <td><span class="tipo-pill ${cfg.classe}">${cfg.label}</span></td>
+                <td>${l.nomeCategoria || "—"}</td>
+                <td>${l.nomeFormaPagamento || "—"}</td>
+                <td>${l.nomeCliente || "—"}</td>
+                <td>${fiado ? '<span class="badge-fiado">Fiado</span>' : "—"}</td>
+                <td>${l.descricao || "—"}</td>
+                <td class="${entrada ? 'valor-entrada' : 'valor-saida'}">${entrada ? "+" : "−"}${fmtMoeda(l.valor)}</td>
+            </tr>`;
+        }).join("");
+    } catch (err) {
+        document.getElementById("tbody-dc-lanc").innerHTML =
+            `<tr><td colspan="8" class="empty-state">Erro ao carregar lançamentos.</td></tr>`;
+        console.error(err);
+    }
+}
+
+function fecharDetalheCaixa() {
+    document.getElementById("modal-detalhe-caixa").classList.remove("open");
 }
 
 // ═══════════════════════════════════════════

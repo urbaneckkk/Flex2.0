@@ -91,10 +91,33 @@ namespace WebApplication5.Repositories
         public IEnumerable<LancamentoCaixaModel> ListarLancamentos(int idEmpresa, int idCaixa)
         {
             using var conn = new MySqlConnection(_connectionString);
-            return conn.Query<LancamentoCaixaModel>(
-                "sp_ListarLancamentosCaixa",
-                new { p_idEmpresa = idEmpresa, p_idCaixa = idCaixa },
-                commandType: CommandType.StoredProcedure);
+            return conn.Query<LancamentoCaixaModel>(@"
+                SELECT
+                    lc.idLancamento,
+                    lc.idCaixa,
+                    lc.idEmpresa,
+                    lc.idUsuario,
+                    lc.idFormaPagamento,
+                    fp.nome              AS nomeFormaPagamento,
+                    lc.idCategoriaFinanceira,
+                    cf.Nome              AS nomeCategoria,
+                    cf.Tipo              AS tipoCategoria,
+                    lc.valor,
+                    lc.dthLancamento,
+                    lc.descricao,
+                    lc.referencia,
+                    lc.tipoLancamento,
+                    lc.pedido_id,
+                    lc.cliente_id,
+                    cl.nome              AS nomeCliente,
+                    lc.contaReceber_id
+                FROM LancamentoCaixa lc
+                LEFT JOIN FormaPagamento      fp ON fp.idFormaPagamento      = lc.idFormaPagamento
+                LEFT JOIN CategoriaFinanceira cf ON cf.idCategoriaFinanceira = lc.idCategoriaFinanceira
+                LEFT JOIN Cliente             cl ON cl.idCliente             = lc.cliente_id
+                WHERE lc.idCaixa = @idCaixa
+                ORDER BY lc.dthLancamento DESC",
+                new { idCaixa });
         }
 
         public IEnumerable<BreakdownFormaPagamentoDto> Breakdown(int idEmpresa, int idCaixa)

@@ -44,6 +44,13 @@ public class CaixaController : BaseController
         return Json(_service.ListarLancamentos(idEmpresa));
     }
 
+    public IActionResult LancamentosPorCaixa(int idCaixa)
+    {
+        var r = VerificarSessaoApi(); if (r != null) return r;
+        var idEmpresa = HttpContext.Session.GetInt32("IdEmpresa")!.Value;
+        return Json(_service.ListarLancamentosPorCaixa(idEmpresa, idCaixa));
+    }
+
     public IActionResult Breakdown()
     {
         var r = VerificarSessaoApi(); if (r != null) return r;

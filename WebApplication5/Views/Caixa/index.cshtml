@@ -536,6 +536,77 @@
 			</div>
 		</div>
 	</div>
+	<!-- MODAL: DETALHE DO CAIXA HISTÓRICO -->
+	<div id="modal-detalhe-caixa" class="modal">
+		<div class="modal-content" style="max-width:90rem;width:97%">
+			<div class="modal-header">
+				<h3><i class="bi bi-cash-stack"></i> <span id="dc-titulo">Detalhes do Caixa</span></h3>
+				<button class="btn-fechar-modal" onclick="fecharDetalheCaixa()">&times;</button>
+			</div>
+			<div class="modal-body">
+
+				<!-- Resumo do caixa -->
+				<div class="dc-resumo">
+					<div class="dc-info-card">
+						<span class="dc-info-label">Operador</span>
+						<span id="dc-operador" class="dc-info-valor">—</span>
+					</div>
+					<div class="dc-info-card">
+						<span class="dc-info-label">Abertura</span>
+						<span id="dc-abertura" class="dc-info-valor">—</span>
+					</div>
+					<div class="dc-info-card">
+						<span class="dc-info-label">Fechamento</span>
+						<span id="dc-fechamento" class="dc-info-valor">—</span>
+					</div>
+					<div class="dc-info-card">
+						<span class="dc-info-label">Saldo Inicial</span>
+						<span id="dc-saldo-inicial" class="dc-info-valor">—</span>
+					</div>
+					<div class="dc-info-card">
+						<span class="dc-info-label">Saldo Final</span>
+						<span id="dc-saldo-final" class="dc-info-valor">—</span>
+					</div>
+					<div class="dc-info-card">
+						<span class="dc-info-label">Diferença</span>
+						<span id="dc-diferenca" class="dc-info-valor">—</span>
+					</div>
+				</div>
+
+				<!-- Totalizadores rápidos -->
+				<div class="dc-totais" id="dc-totais"></div>
+
+				<!-- Tabela de lançamentos -->
+				<div style="margin-top:1.6rem">
+					<p class="form-secao">Lançamentos do Caixa</p>
+					<div style="overflow-x:auto">
+						<table class="table-lancamentos" id="tabela-dc-lanc">
+							<thead>
+								<tr>
+									<th>Data / Hora</th>
+									<th>Tipo</th>
+									<th>Categoria</th>
+									<th>Forma Pgto</th>
+									<th>Cliente</th>
+									<th>Fiado</th>
+									<th>Descrição</th>
+									<th>Valor</th>
+								</tr>
+							</thead>
+							<tbody id="tbody-dc-lanc">
+								<tr><td colspan="8" class="empty-state">Carregando...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+			</div>
+			<div class="modal-footer">
+				<button class="btn-secundario" onclick="fecharDetalheCaixa()">Fechar</button>
+			</div>
+		</div>
+	</div>
+
 	<script src="/js/menuJS/menu.js"></script>
 	<script src="/js/caixaJS/caixa.js"></script>
 </body>
