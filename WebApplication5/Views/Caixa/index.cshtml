@@ -60,12 +60,6 @@
 						</div>
 					</div>
 
-					<div class="caixa-card">
-						<span class="caixa-card-label">Troco Disponível</span>
-						<span id="caixa-troco" class="caixa-card-valor">R$ 0,00</span>
-						<span class="caixa-card-sub">Saldo em dinheiro físico</span>
-					</div>
-
 					<div class="caixa-acoes">
 						<button id="btn-abrir" class="btn-abrir-caixa" onclick="abrirModalAbrirCaixa()">
 							<i class="bi bi-unlock-fill"></i> Abrir Caixa
@@ -136,23 +130,7 @@
 						</div>
 					</div>
 
-					<div id="conteudo-contas" style="display:none">
-						<table class="table-lancamentos" id="tabela-contas">
-							<thead>
-								<tr>
-									<th>Status</th>
-									<th>Cliente</th>
-									<th>Descrição</th>
-									<th>Vencimento</th>
-									<th>Total</th>
-									<th>Pago</th>
-									<th>Restante</th>
-									<th>Ações</th>
-								</tr>
-							</thead>
-							<tbody></tbody>
-						</table>
-					</div>
+
 
 					<div id="conteudo-historico" style="display:none">
 						<table class="table-historico" id="tabela-historico">
@@ -518,49 +496,43 @@
 				<h3><i class="bi bi-receipt"></i> Detalhe do Lançamento</h3>
 				<button class="btn-fechar-modal" onclick="fecharDetalheL()">&times;</button>
 			</div>
-			<div class="modal-body" style="padding:2rem">
+			<div class="modal-body">
 
-				<!-- Valor em destaque -->
-				<div style="text-align:center;padding:1.6rem;background:#f8fafc;border-radius:.8rem;margin-bottom:2rem;border:1px solid #e2e8f0">
-					<div style="font-size:1.2rem;color:#6b7280;margin-bottom:.4rem">Valor</div>
-					<div id="dl-valor" style="font-size:2.8rem;font-weight:700"></div>
+				<div class="dl-valor-card">
+					<span class="dl-valor-label">Valor</span>
+					<span id="dl-valor" class="dl-valor-num"></span>
 				</div>
 
-				<!-- Grid de campos -->
-				<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem">
-					<div>
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Tipo</div>
-						<div id="dl-tipo" style="font-weight:600;font-size:1.4rem"></div>
+				<div class="form-grid">
+					<div class="form-group">
+						<label>Tipo</label>
+						<div id="dl-tipo" class="dl-campo"></div>
 					</div>
-					<div>
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Data / Hora</div>
-						<div id="dl-data" style="font-size:1.4rem"></div>
+					<div class="form-group">
+						<label>Data / Hora</label>
+						<div id="dl-data" class="dl-campo"></div>
 					</div>
-					<div>
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Forma de Pagamento</div>
-						<div id="dl-fp" style="font-size:1.4rem"></div>
+					<div class="form-group">
+						<label>Forma de Pagamento</label>
+						<div id="dl-fp" class="dl-campo"></div>
 					</div>
-					<div>
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Categoria</div>
-						<div id="dl-cat" style="font-size:1.4rem"></div>
+					<div class="form-group">
+						<label>Categoria</label>
+						<div id="dl-cat" class="dl-campo"></div>
 					</div>
-					<div>
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Cliente</div>
-						<div id="dl-cliente" style="font-size:1.4rem"></div>
+					<div class="form-group">
+						<label>Cliente</label>
+						<div id="dl-cliente" class="dl-campo"></div>
 					</div>
-					<div>
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Referência</div>
-						<div id="dl-ref" style="font-size:1.4rem"></div>
-					</div>
-					<div style="grid-column:1/-1">
-						<div style="font-size:1.15rem;color:#6b7280;margin-bottom:.3rem">Descrição</div>
-						<div id="dl-desc" style="font-size:1.4rem;color:#374151"></div>
+					<div class="form-group form-col-2">
+						<label>Descrição</label>
+						<div id="dl-desc" class="dl-campo"></div>
 					</div>
 				</div>
 
 			</div>
 			<div class="modal-footer">
-				<button class="btn-secondary" onclick="fecharDetalheL()">Fechar</button>
+				<button class="btn-secundario" onclick="fecharDetalheL()">Fechar</button>
 			</div>
 		</div>
 	</div>

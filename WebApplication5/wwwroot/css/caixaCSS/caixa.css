@@ -29,7 +29,7 @@ main {
 /* PAINEL */
 .caixa-painel {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr 1fr auto;
     gap: 1.6rem;
     margin-bottom: 2rem;
     align-items: stretch;
@@ -162,7 +162,7 @@ main {
 }
 
 .breakdown-titulo {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #9ca3af;
     text-transform: uppercase;
@@ -188,25 +188,59 @@ main {
 .breakdown-item {
     display: flex;
     flex-direction: column;
-    gap: .4rem;
+    gap: .5rem;
     background: #f8fafc;
     border: 1px solid #e5e7eb;
     border-radius: .8rem;
-    padding: 1rem 1.4rem;
-    min-width: 16rem;
+    padding: 1.2rem 1.6rem;
+    min-width: 18rem;
+    flex: 1;
+}
+
+.breakdown-fp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .breakdown-nome {
-    font-size: 1.2rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    color: #374151;
+    color: #1e293b;
+}
+
+.breakdown-count {
+    font-size: 1.1rem;
+    color: #9ca3af;
+    background: #e5e7eb;
+    border-radius: 2rem;
+    padding: .15rem .7rem;
+}
+
+.breakdown-bar-wrap {
+    height: .4rem;
+    background: #e5e7eb;
+    border-radius: 2rem;
+    overflow: hidden;
+}
+
+.breakdown-bar {
+    height: 100%;
+    background: #1e3c72;
+    border-radius: 2rem;
+    transition: width .4s ease;
+    min-width: .4rem;
 }
 
 .breakdown-valores {
     display: flex;
-    gap: .8rem;
+    gap: .6rem;
     align-items: center;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
+}
+
+.breakdown-sep {
+    color: #d1d5db;
 }
 
 .breakdown-entrada {
@@ -221,7 +255,7 @@ main {
 
 .breakdown-liquido {
     font-weight: 700;
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     margin-left: auto;
 }
 
@@ -232,6 +266,11 @@ main {
     .breakdown-liquido.vermelho {
         color: #dc2626;
     }
+
+.breakdown-ultimo {
+    font-size: 1.1rem;
+    color: #9ca3af;
+}
 
 /* BOTÕES AÇÃO */
 .lancamento-acoes {
@@ -1437,3 +1476,53 @@ main {
     font-size: 1.3rem;
     font-family: 'Segoe UI', sans-serif;
 }
+
+/* ── Data/hora na tabela de lançamentos ── */
+.lanc-data {
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: #1e293b;
+    line-height: 1.3;
+}
+
+.lanc-hora {
+    font-size: 1.15rem;
+    color: #9ca3af;
+    line-height: 1.3;
+}
+
+/* ── Detalhe do Lançamento ── */
+.dl-valor-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .8rem;
+    padding: 1.6rem;
+    margin-bottom: 2rem;
+    gap: .4rem;
+}
+
+.dl-valor-label {
+    font-size: 1.2rem;
+    color: #6b7280;
+}
+
+.dl-valor-num {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #15803d;
+}
+
+.dl-valor-num.saida {
+    color: #dc2626;
+}
+
+.dl-campo {
+    font-size: 1.4rem;
+    color: #1e293b;
+    font-weight: 500;
+    margin-top: .3rem;
+}
+

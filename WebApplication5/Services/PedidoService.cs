@@ -37,6 +37,9 @@ namespace WebApplication5.Services
 
             var idPedido = _repo.Inserir(pedido);
 
+            if (pedido.DthPrevisaoEntrega.HasValue)
+                _repo.SetPrevisaoEntrega(idPedido, pedido.DthPrevisaoEntrega);
+
             foreach (var item in dto.Itens)
             {
                 item.IdPedido = idPedido;

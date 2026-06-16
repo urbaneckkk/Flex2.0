@@ -16,10 +16,30 @@ namespace WebApplication5.Repositories
         public IEnumerable<PedidoListaGridDto> Listar(int idEmpresa)
         {
             using var conn = new MySqlConnection(_connectionString);
-            return conn.Query<PedidoListaGridDto>(
-                "sp_ListarPedido",
-                new { p_idEmpresa = idEmpresa },
-                commandType: CommandType.StoredProcedure);
+            return conn.Query<PedidoListaGridDto>(@"
+                SELECT
+                    p.idPedido,
+                    p.numeroPedido,
+                    p.cliente_id        AS idCliente,
+                    c.Nome              AS nomeCliente,
+                    p.idEmpresa,
+                    p.canal,
+                    p.numeroExterno,
+                    sp.Nome             AS status,
+                    p.statusPedido_id,
+                    p.Observacao        AS observacao,
+                    p.valorTotal,
+                    p.valorFrete,
+                    p.Desconto          AS desconto,
+                    p.dthPedido         AS dthCriacao,
+                    p.dthPrevisaoEntrega,
+                    (SELECT COUNT(*) FROM PedidoItem pi WHERE pi.idPedido = p.idPedido) AS totalItens
+                FROM Pedido p
+                INNER JOIN Cliente c       ON c.idCliente        = p.cliente_id
+                INNER JOIN StatusPedido sp ON sp.idStatusPedido  = p.statusPedido_id
+                WHERE p.idEmpresa = @idEmpresa
+                ORDER BY p.dthPedido DESC",
+                new { idEmpresa });
         }
 
         public void DeletarItens(int idPedido)
@@ -151,6 +171,14 @@ namespace WebApplication5.Repositories
                 "sp_ListarPagamentosPedido",
                 new { p_idPedido = idPedido },
                 commandType: CommandType.StoredProcedure);
+        }
+
+        public void SetPrevisaoEntrega(int idPedido, DateTime? data)
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Execute(
+                "UPDATE Pedido SET dthPrevisaoEntrega = @data WHERE idPedido = @idPedido",
+                new { idPedido, data });
         }
 
         public IEnumerable<dynamic> ListarHistoricoStatus(int idPedido)

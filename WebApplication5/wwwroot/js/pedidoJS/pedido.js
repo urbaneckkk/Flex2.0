@@ -377,7 +377,13 @@ async function abrirModalEditar(idPedido) {
     // Carrega pagamentos
     try {
         const pags = await apiGet(`/Pedido/ListarPagamentos?idPedido=${idPedido}`);
-        pagamentosPedidoAtual = pags;
+        pagamentosPedidoAtual = pags.map(p => ({
+            idFormaPagamento: p.formaPagamento_id ?? p.idFormaPagamento ?? 1,
+            valor: p.valor ?? 0,
+            dthPagamento: p.dthPagamento
+                ? p.dthPagamento.substring(0, 10)
+                : new Date().toISOString().split("T")[0]
+        }));
         renderizarPagamentosModal();
     } catch { /* mantém vazio */ }
 
@@ -500,7 +506,7 @@ function filtrarListaClientes(termo) {
     lista.innerHTML = filtrados.map(c => `
         <div class="busca-item" onclick="selecionarCliente(${c.idCliente}, '${(c.nome ?? "").replace(/'/g, "\\'")}')">
             <div class="busca-item-info">
-                <div class="busca-item-nome">${highlight(c.nome ?? "—", t)}</div>
+                <div class="busca-item-nome">${c.nome ?? "—"}</div>
                 <div class="busca-item-sub">${c.cpfCNPJ ?? "—"}</div>
             </div>
         </div>`).join("");
@@ -695,6 +701,7 @@ async function salvarPedido() {
                     IdCliente: idCliente,
                     Canal: document.getElementById("pedido-canal").value,
                     Observacao: document.getElementById("pedido-obs").value || null,
+                    DthPrevisaoEntrega: document.getElementById("pedido-previsao").value || null,
                     ValorTotal: total,
                     ValorFrete: 0,
                     Desconto: descTotal,
@@ -743,13 +750,19 @@ async function abrirModalDetalhe(idPedido) {
     document.getElementById("det-cliente").textContent = pedido.nomeCliente ?? "—";
     document.getElementById("det-canal").textContent = pedido.canal ?? "—";
     document.getElementById("det-data").textContent = fmtData(pedido.dthCriacao);
-    document.getElementById("det-previsao").textContent = "—";
+    document.getElementById("det-previsao").textContent = pedido.dthPrevisaoEntrega ? fmtData(pedido.dthPrevisaoEntrega) : "—";
     document.getElementById("det-total").textContent = fmtMoeda(pedido.valorTotal);
     document.getElementById("det-obs").textContent = pedido.observacao || "—";
 
-    // Pre-seleciona status atual
+    // Pre-seleciona status e bloqueia controles se pedido terminal
+    const bloqueado = pedido.statusPedidoId === 5 || pedido.statusPedidoId === 6;
     const selStatus = document.getElementById("det-novo-status");
-    if (selStatus) selStatus.value = pedido.statusPedidoId;
+    const obsStatus = document.getElementById("det-obs-status");
+    const btnAtualizarStatus = document.getElementById("btn-atualizar-status");
+
+    if (selStatus) { selStatus.value = pedido.statusPedidoId; selStatus.disabled = bloqueado; }
+    if (obsStatus) { obsStatus.disabled = bloqueado; if (bloqueado) obsStatus.value = ""; }
+    if (btnAtualizarStatus) btnAtualizarStatus.disabled = bloqueado;
 
     mudarTabDetalhe("resumo");
 
@@ -834,13 +847,18 @@ async function carregarPagamentosDetalhe(idPedido) {
             container.innerHTML = `<div class="pagamentos-empty"><i class="bi bi-credit-card"></i>Nenhum pagamento registrado</div>`;
             return;
         }
-        container.innerHTML = pags.map(p => `
+        container.innerHTML = pags.map(p => {
+            const nomeFP = p.nomeFP
+                ?? formasPagamentoCache.find(f => f.id === p.formaPagamento_id)?.nome
+                ?? "—";
+            return `
             <div class="pagamento-item" style="cursor:default">
-                <div><span class="pagamento-label">Forma</span><div>${p.nomeFP ?? "—"}</div></div>
+                <div><span class="pagamento-label">Forma</span><div>${nomeFP}</div></div>
                 <div><span class="pagamento-label">Data</span><div>${fmtData(p.dthPagamento)}</div></div>
                 <div><span class="pagamento-label">Valor</span><div class="subtotal-label">${fmtMoeda(p.valor)}</div></div>
                 <div></div>
-            </div>`).join("");
+            </div>`;
+        }).join("");
     } catch {
         container.innerHTML = `<div class="empty-state">Erro ao carregar pagamentos.</div>`;
     }
@@ -851,6 +869,11 @@ async function carregarPagamentosDetalhe(idPedido) {
 // ════════════════════════════════════════════
 async function atualizarStatusPedido() {
     if (!_pedidoDetalheAtual) return;
+    const statusAtual = resolverStatusId(_pedidoDetalheAtual);
+    if (statusAtual === 5 || statusAtual === 6) {
+        flexToast("Não é possível alterar o status de pedidos concluídos ou cancelados.", "aviso");
+        return;
+    }
     const novoStatus = parseInt(document.getElementById("det-novo-status").value);
     const obs = document.getElementById("det-obs-status").value || null;
 

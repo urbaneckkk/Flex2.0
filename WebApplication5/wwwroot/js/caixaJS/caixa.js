@@ -128,15 +128,8 @@ async function inicializar() {
         lancamentos = caixaAtual ? (results[6] || []) : [];
 
         atualizarPainel();
-
-        if (caixaAtual && results[7]?.length) {
-            renderizarBreakdownData(results[7]);
-        } else {
-            atualizarBreakdown();
-        }
-
+        atualizarBreakdown();
         renderizarLancamentos();
-        renderizarContas();
         renderizarHistorico();
 
     } catch (err) {
@@ -176,8 +169,6 @@ function atualizarPainel() {
         liquidoEl.textContent = fmtMoeda(liquido);
         liquidoEl.className = `resumo-valor ${liquido >= 0 ? "verde" : "vermelho"}`;
     }
-    document.getElementById("caixa-troco").textContent = fmtMoeda(caixaAtual?.troco || 0);
-
     document.getElementById("btn-abrir").style.display = aberto ? "none" : "";
     document.getElementById("btn-fechar").style.display = aberto ? "" : "none";
 
@@ -203,9 +194,12 @@ function atualizarBreakdown() {
     const grupos = {};
     lancamentos.forEach(l => {
         const fp = l.nomeFormaPagamento || "Outros";
-        if (!grupos[fp]) grupos[fp] = { entrada: 0, saida: 0 };
+        if (!grupos[fp]) grupos[fp] = { entrada: 0, saida: 0, count: 0, ultimo: null };
         if (isEntrada(l)) grupos[fp].entrada += Number(l.valor);
         else grupos[fp].saida += Number(l.valor);
+        grupos[fp].count++;
+        if (!grupos[fp].ultimo || l.dthLancamento > grupos[fp].ultimo)
+            grupos[fp].ultimo = l.dthLancamento;
     });
 
     if (!Object.keys(grupos).length) {
@@ -213,16 +207,29 @@ function atualizarBreakdown() {
         return;
     }
 
+    const totalEntradas = Object.values(grupos).reduce((s, v) => s + v.entrada, 0);
+
     container.innerHTML = Object.entries(grupos).map(([fp, v]) => {
         const liquido = v.entrada - v.saida;
+        const pct = totalEntradas > 0 ? Math.round((v.entrada / totalEntradas) * 100) : 0;
+        const ultimoHora = v.ultimo ? new Date(v.ultimo.endsWith("Z") ? v.ultimo.slice(0,-1) : v.ultimo)
+            .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
         return `
         <div class="breakdown-item">
-            <div class="breakdown-nome">${fp}</div>
-            <div class="breakdown-valores">
-                <span class="breakdown-entrada">+${fmtMoeda(v.entrada)}</span>
-                <span class="breakdown-saida">−${fmtMoeda(v.saida)}</span>
-                <span class="breakdown-liquido ${liquido >= 0 ? 'verde' : 'vermelho'}">${fmtMoeda(liquido)}</span>
+            <div class="breakdown-fp-header">
+                <span class="breakdown-nome">${fp}</span>
+                <span class="breakdown-count">${v.count} lanç.</span>
             </div>
+            <div class="breakdown-bar-wrap">
+                <div class="breakdown-bar" style="width:${pct}%"></div>
+            </div>
+            <div class="breakdown-valores">
+                <span class="breakdown-entrada" title="Entradas">+${fmtMoeda(v.entrada)}</span>
+                <span class="breakdown-sep">·</span>
+                <span class="breakdown-saida" title="Saídas">−${fmtMoeda(v.saida)}</span>
+                <span class="breakdown-liquido ${liquido >= 0 ? 'verde' : 'vermelho'}" title="Líquido">${fmtMoeda(liquido)}</span>
+            </div>
+            <div class="breakdown-ultimo">Último: ${ultimoHora}</div>
         </div>`;
     }).join("");
 }
@@ -247,7 +254,7 @@ function mudarAba(aba) {
     document.querySelectorAll(".aba-btn").forEach(b => b.classList.remove("ativa"));
     document.getElementById(`aba-${aba}`)?.classList.add("ativa");
 
-    const paineis = ["lancamentos", "contas", "historico"];
+    const paineis = ["lancamentos", "historico"];
     paineis.forEach(p => {
         const el = document.getElementById(`conteudo-${p}`);
         if (el) el.style.display = p === aba ? "" : "none";
@@ -334,9 +341,13 @@ function renderizarLancamentos() {
     tbody.innerHTML = pagina.map((l, i) => {
         const cfg = TIPO_CONFIG[(l.tipoLancamento || "").toUpperCase()] || { classe: "tipo-manual", label: l.tipoLancamento || "—" };
         const entrada = isEntrada(l);
+        const dtRaw = l.dthLancamento ? (l.dthLancamento.endsWith("Z") ? l.dthLancamento.slice(0,-1) : l.dthLancamento) : null;
+        const dtObj = dtRaw ? new Date(dtRaw) : null;
+        const dataStr = dtObj ? dtObj.toLocaleDateString("pt-BR") : "—";
+        const horaStr = dtObj ? dtObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
         return `
         <tr style="cursor:pointer" onclick="abrirDetalheL(${inicio + i})">
-            <td>${fmtDataHora(l.dthLancamento)}</td>
+            <td><div class="lanc-data">${dataStr}</div><div class="lanc-hora">${horaStr}</div></td>
             <td><span class="tipo-pill ${cfg.classe}">${cfg.label}</span></td>
             <td>${l.nomeCategoria || "—"}</td>
             <td>${l.nomeFormaPagamento || "—"}</td>
@@ -397,15 +408,15 @@ function abrirDetalheL(idx) {
         VENDA: "Venda", DESPESA: "Despesa", SANGRIA: "Sangria",
         SUPRIMENTO: "Suprimento", RECEBIMENTO: "Recebimento"
     };
+    const elValor = document.getElementById("dl-valor");
+    elValor.textContent = (entrada ? "+" : "−") + fmtMoeda(l.valor);
+    elValor.className = "dl-valor-num" + (entrada ? "" : " saida");
     document.getElementById("dl-tipo").textContent = TIPO_CONFIG[(l.tipoLancamento || "").toUpperCase()] || l.tipoLancamento || "—";
     document.getElementById("dl-data").textContent = fmtDataHora(l.dthLancamento);
-    document.getElementById("dl-valor").textContent = (entrada ? "+" : "−") + fmtMoeda(l.valor);
-    document.getElementById("dl-valor").className = entrada ? "valor-entrada" : "valor-saida";
     document.getElementById("dl-fp").textContent = l.nomeFormaPagamento || "—";
     document.getElementById("dl-cat").textContent = l.nomeCategoria || "—";
     document.getElementById("dl-cliente").textContent = l.nomeCliente || "—";
     document.getElementById("dl-desc").textContent = l.descricao || "—";
-    document.getElementById("dl-ref").textContent = l.referencia || "—";
     document.getElementById("modal-detalhe-lanc").classList.add("open");
 }
 
@@ -470,7 +481,7 @@ function renderizarHistorico() {
 
     tbody.innerHTML = historicoList.map(h => {
         const diff = Number(h.saldoFinal || 0) - Number(h.saldoInicial || 0);
-        const fechado = !!h.dthFechamento;
+        const fechado = !h.fAtivo;
         return `
     <tr>
         <td><span class="status-pill ${fechado ? 'status-fechado' : 'status-aberto'}">${fechado ? 'Fechado' : 'Aberto'}</span></td>

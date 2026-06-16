@@ -16,6 +16,7 @@
         public decimal ValorFrete { get; set; }
         public decimal Desconto { get; set; }
         public DateTime DthCriacao { get; set; }
+        public DateTime? DthPrevisaoEntrega { get; set; }
     }
 
     public class PedidoItemModel
@@ -91,6 +92,7 @@
         public decimal Desconto { get; set; }
         public decimal ValorFrete { get; set; }
         public string? Observacao { get; set; }
+        public DateTime? DthPrevisaoEntrega { get; set; }
         public List<PedidoItemModel> Itens { get; set; } = new();
         public List<PedidoPagamentoModel> Pagamentos { get; set; } = new();
     }

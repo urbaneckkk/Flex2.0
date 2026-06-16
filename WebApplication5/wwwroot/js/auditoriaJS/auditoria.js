@@ -1,7 +1,7 @@
 ﻿// ===== AUDITORIA.JS — FlexGestor =====
 
 // Define quantos logs serão exibidos por página na tabela
-const LOGS_POR_PAGINA = 20;
+const LOGS_POR_PAGINA = 15;
 
 // Controla a página atual da paginação
 let paginaAtual = 1;
