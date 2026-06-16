@@ -18,13 +18,8 @@ async function apiGet(url) {
 
 // Formata data/hora para padrão brasileiro
 function fmtDataHora(s) {
-    if (!s) return "—"; // Caso não exista valor
-
-    // Remove o "Z" (UTC) se existir, evitando problemas de timezone
-    const local = s.endsWith("Z") ? s.slice(0, -1) : s;
-
-    // Converte para formato legível pt-BR
-    return new Date(local).toLocaleString("pt-BR", {
+    if (!s) return "—";
+    return new Date(s).toLocaleString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -32,6 +27,12 @@ function fmtDataHora(s) {
         minute: "2-digit",
         second: "2-digit"
     });
+}
+
+// Limpa endereço IPv4-mapeado em IPv6 (::ffff:x.x.x.x → x.x.x.x)
+function fmtIp(ip) {
+    if (!ip) return "—";
+    return ip.replace(/^::ffff:/i, "");
 }
 
 // Configuração visual dos módulos (label + classe CSS)
@@ -174,7 +175,7 @@ function renderizarTabela() {
                 ${l.descricao || "—"}
             </td>
 
-            <td class="td-ip">${l.ipUsuario || "—"}</td>
+            <td class="td-ip">${fmtIp(l.ipUsuario)}</td>
 
             <td>
                 ${temDetalhe ? `
@@ -248,7 +249,7 @@ function abrirDetalhe(idx) {
         <div class="detalhe-linha"><span class="detalhe-label">Módulo</span><span>${log.modulo}</span></div>
         <div class="detalhe-linha"><span class="detalhe-label">Ação</span><span>${log.acao}</span></div>
         <div class="detalhe-linha"><span class="detalhe-label">Descrição</span><span>${log.descricao || "—"}</span></div>
-        <div class="detalhe-linha"><span class="detalhe-label">IP</span><span>${log.ipUsuario || "—"}</span></div>`;
+        <div class="detalhe-linha"><span class="detalhe-label">IP</span><span>${fmtIp(log.ipUsuario)}</span></div>`;
 
     // Mostra valor anterior (tentando interpretar como JSON)
     if (log.valorAnterior) {

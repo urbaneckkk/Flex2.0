@@ -56,6 +56,10 @@ namespace WebApplication5.Repositories
                 nomeUsuarioLike = string.IsNullOrEmpty(filtro.NomeUsuario) ? null : $"%{filtro.NomeUsuario}%",
                 dataInicio = filtro.DataInicio,
                 dataFim = filtro.DataFim.HasValue ? filtro.DataFim.Value.AddDays(1) : (DateTime?)null
+            }).Select(l =>
+            {
+                l.dthAcao = DateTime.SpecifyKind(l.dthAcao, DateTimeKind.Utc);
+                return l;
             });
         }
 
