@@ -503,12 +503,13 @@ function fecharBuscaCliente() {
 function filtrarListaClientes(termo) {
     const lista = document.getElementById("lista-busca-clientes");
     const t = normalizar(termo);
+    const tDigitos = t.replace(/\D/g, "");
     const filtrados = clientesCache
         .filter(c => c.fAtivo !== false && c.fAtivo !== 0)
         .filter(c => !t ||
             normalizar(c.nome).includes(t) ||
             normalizar(c.nomeFantasia ?? "").includes(t) ||
-            (c.cpfCNPJ ?? "").replace(/\D/g, "").includes(t.replace(/\D/g, "")));
+            (tDigitos && (c.cpfCNPJ ?? "").replace(/\D/g, "").includes(tDigitos)));
 
     if (!filtrados.length) {
         lista.innerHTML = `<div class="busca-vazia"><i class="bi bi-people"></i>Nenhum cliente encontrado.</div>`;
